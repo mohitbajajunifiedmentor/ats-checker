@@ -1,24 +1,45 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## ATS Resume Checker (AI + History)
+
+Upload a PDF resume, optionally paste a job description, and get:
+
+- **ATS score** (0–100)
+- **Strengths / improvements**
+- **Missing vs matched keywords (JD-aware)**
+- **AI suggestions**
+- **Saved history per user (Postgres + Prisma)**
 
 ## Getting Started
 
-First, run the development server:
+### 1) Configure environment variables
+
+Create a `.env` file in the project root:
+
+```bash
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DBNAME?schema=public"
+NEXTAUTH_SECRET="replace-with-a-long-random-string"
+GEMINI_API_KEY="your-gemini-api-key"
+```
+
+### 2) Install deps
+
+```bash
+npm install
+```
+
+### 3) Setup database (Prisma)
+
+```bash
+npx prisma migrate dev --name init
+npx prisma generate
+```
+
+### 4) Run the dev server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Open `http://localhost:3000` with your browser.
 
 ## Learn More
 
