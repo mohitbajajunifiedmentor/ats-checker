@@ -604,7 +604,7 @@ export default function ProfessionalResumeEditor({
           </div>
 
           {/* ── PAGE FOOTER ──────────────────────────────────── */}
-          <div style={{
+          {/* <div style={{
             borderTop:`1px solid ${C.border}`,background:C.sidebar,
             padding:"6px 24px",display:"flex",justifyContent:"space-between",
             alignItems:"center",
@@ -615,7 +615,7 @@ export default function ProfessionalResumeEditor({
             <span style={{ fontSize:8.5,color:C.textMuted }}>
               {data.email||""}
             </span>
-          </div>
+          </div> */}
         </div>{/* /A4 sheet */}
 
         {/* page count hint */}

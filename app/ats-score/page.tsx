@@ -49,7 +49,7 @@ function ScoreRing({ score, size = 140 }: { score: number; size?: number }) {
       />
     </svg>
   );
-}
+}                   
 
 /* ─────────────────────────────────────────────────────
    Section grade card
@@ -580,83 +580,6 @@ export default function AtsScorePage() {
               </div>
             </div>
 
-            {/* Extracted data preview */}
-            {(sd.name || sd.email || (sd.skills || []).length > 0) && (
-              <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-7">
-                <h2 className="text-lg font-bold text-slate-50 mb-4">What We Extracted From Your Resume</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2.5">
-                    {[
-                      { label: "Name",     val: sd.name },
-                      { label: "Email",    val: sd.email },
-                      { label: "Phone",    val: sd.phone },
-                      { label: "Location", val: sd.address },
-                      { label: "LinkedIn", val: sd.linkedin },
-                      { label: "GitHub",   val: sd.github },
-                    ].filter(({ val }) => val).map(({ label, val }) => (
-                      <div key={label} className="flex gap-3 items-start">
-                        <span className="text-xs text-slate-500 w-16 flex-shrink-0 pt-0.5 font-medium">{label}</span>
-                        <span className="text-sm text-slate-300 break-all">{val}</span>
-                      </div>
-                    ))}
-                  </div>
-                  {sd.summary && (
-                    <div>
-                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Summary</p>
-                      <p className="text-sm text-slate-300 leading-relaxed line-clamp-5">{sd.summary}</p>
-                    </div>
-                  )}
-                </div>
-
-                {(sd.skills || []).length > 0 && (
-                  <div className="mt-5">
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
-                      Skills Detected ({sd.skills.length})
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {sd.skills.slice(0, 24).map((skill: string, i: number) => (
-                        <span key={i} className="bg-slate-800 border border-slate-700 text-slate-300 text-xs px-2.5 py-1 rounded-full">{skill}</span>
-                      ))}
-                      {sd.skills.length > 24 && <span className="text-xs text-slate-500 self-center">+{sd.skills.length - 24} more</span>}
-                    </div>
-                  </div>
-                )}
-
-                {(sd.education || []).length > 0 && (
-                  <div className="mt-5">
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Education</p>
-                    <div className="space-y-1">
-                      {sd.education.map((edu: any, i: number) => (
-                        <p key={i} className="text-sm text-slate-300">
-                          <span className="font-medium">{edu.degree}</span>
-                          {edu.institution && <span className="text-slate-400"> · {edu.institution}</span>}
-                          {edu.year && <span className="text-slate-500"> ({edu.year})</span>}
-                        </p>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {(sd.experience || []).length > 0 && (
-                  <div className="mt-5">
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Experience</p>
-                    <div className="space-y-2">
-                      {sd.experience.map((exp: any, i: number) => (
-                        <div key={i} className="flex gap-2 items-start">
-                          <span className="text-emerald-400 mt-1 text-xs flex-shrink-0">▸</span>
-                          <div>
-                            <span className="text-sm font-medium text-slate-200">{exp.title}</span>
-                            {exp.company && <span className="text-sm text-slate-400"> at {exp.company}</span>}
-                            {exp.duration && <span className="text-xs text-slate-500"> ({exp.duration})</span>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* Strengths & suggestions */}
             {((analysis.strengths || []).length > 0 || (analysis.suggestions || []).length > 0) && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -876,7 +799,10 @@ export default function AtsScorePage() {
         </div>
 
         <div className="flex justify-center">
-          <button onClick={() => router.push("/dashboard")} className="text-sm text-slate-500 hover:text-slate-300 transition-colors">
+          <button
+            onClick={() => router.push(`/history?email=${encodeURIComponent(sd.email || "")}`)}
+            className="text-sm text-slate-500 hover:text-slate-300 transition-colors"
+          >
             View Resume History →
           </button>
         </div>
