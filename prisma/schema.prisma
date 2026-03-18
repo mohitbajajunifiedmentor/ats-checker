@@ -29,5 +29,21 @@ model Resume {
   suggestions     Json?
   createdAt       DateTime @default(now())
 
+  // New structured fields
+  name            String?
+  email           String?
+  phone           String?
+  address         String?
+  linkedin        String?
+  github          String?
+  portfolio       String?
+  summary         String?  @db.Text
+  education       Json?   // Array of education objects
+  experience      Json?   // Array of experience objects
+  projects        Json?   // Array of project objects
+  skills          String[]
+  certifications  Json?   // Array of certification objects
+  languages       String[]
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
