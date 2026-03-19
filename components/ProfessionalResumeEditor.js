@@ -360,14 +360,11 @@ export default function ProfessionalResumeEditor({
 
                 {/* Contact bar */}
                 {editing?(
-                  <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:5,marginTop:10 }}>
+                  <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:5,marginTop:10 }}>
                     {[
                       {k:"email",ph:"Email"},
                       {k:"phone",ph:"Phone"},
                       {k:"address",ph:"City, Country"},
-                      {k:"linkedin",ph:"linkedin.com/in/…"},
-                      {k:"github",ph:"github.com/…"},
-                      {k:"portfolio",ph:"Portfolio URL"},
                     ].map(({k,ph})=>(
                       <input key={k} value={data[k]||""} onChange={e=>set(k,e.target.value)}
                         placeholder={ph}
@@ -375,15 +372,66 @@ export default function ProfessionalResumeEditor({
                           borderRadius:4,padding:"2px 7px",color:"#fff",fontSize:9.5,
                           outline:"none",fontFamily:"inherit" }}/>
                     ))}
+                    {/* LinkedIn URL + display text */}
+                    <input value={data.linkedin||""} onChange={e=>set("linkedin",e.target.value)}
+                      placeholder="LinkedIn URL (https://linkedin.com/in/…)"
+                      style={{ background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.25)",
+                        borderRadius:4,padding:"2px 7px",color:"#fff",fontSize:9.5,
+                        outline:"none",fontFamily:"inherit" }}/>
+                    <input value={data.linkedinText||""} onChange={e=>set("linkedinText",e.target.value)}
+                      placeholder="LinkedIn display text (e.g. john-doe)"
+                      style={{ background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.25)",
+                        borderRadius:4,padding:"2px 7px",color:"#fff",fontSize:9.5,
+                        outline:"none",fontFamily:"inherit" }}/>
+                    {/* GitHub URL + display text */}
+                    <input value={data.github||""} onChange={e=>set("github",e.target.value)}
+                      placeholder="GitHub URL (https://github.com/…)"
+                      style={{ background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.25)",
+                        borderRadius:4,padding:"2px 7px",color:"#fff",fontSize:9.5,
+                        outline:"none",fontFamily:"inherit" }}/>
+                    <input value={data.githubText||""} onChange={e=>set("githubText",e.target.value)}
+                      placeholder="GitHub display text (e.g. johndoe)"
+                      style={{ background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.25)",
+                        borderRadius:4,padding:"2px 7px",color:"#fff",fontSize:9.5,
+                        outline:"none",fontFamily:"inherit" }}/>
+                    {/* Portfolio URL + display text */}
+                    <input value={data.portfolio||""} onChange={e=>set("portfolio",e.target.value)}
+                      placeholder="Portfolio URL"
+                      style={{ background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.25)",
+                        borderRadius:4,padding:"2px 7px",color:"#fff",fontSize:9.5,
+                        outline:"none",fontFamily:"inherit" }}/>
+                    <input value={data.portfolioText||""} onChange={e=>set("portfolioText",e.target.value)}
+                      placeholder="Portfolio display text"
+                      style={{ background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.25)",
+                        borderRadius:4,padding:"2px 7px",color:"#fff",fontSize:9.5,
+                        outline:"none",fontFamily:"inherit" }}/>
                   </div>
                 ):(
                   <div style={{ display:"flex",flexWrap:"wrap",gap:"4px 18px",marginTop:9,fontSize:FS.contactItem,opacity:0.9 }}>
                     {data.email     &&<span>📧 {data.email}</span>}
                     {data.phone     &&<span>📞 {data.phone}</span>}
                     {data.address   &&<span>📍 {data.address}</span>}
-                    {data.linkedin  &&<span>🔗 {data.linkedin.replace(/https?:\/\/(www\.)?/i,"")}</span>}
-                    {data.github    &&<span>💻 {data.github.replace(/https?:\/\/(www\.)?/i,"")}</span>}
-                    {data.portfolio &&<span>🌐 {data.portfolio.replace(/https?:\/\/(www\.)?/i,"")}</span>}
+                    {data.linkedin  &&(
+                      <a href={data.linkedin.startsWith("http")?data.linkedin:`https://${data.linkedin}`}
+                        target="_blank" rel="noopener noreferrer"
+                        style={{ color:"inherit",textDecoration:"none" }}>
+                        🔗 {data.linkedinText || data.linkedin.replace(/https?:\/\/(www\.)?/i,"")}
+                      </a>
+                    )}
+                    {data.github    &&(
+                      <a href={data.github.startsWith("http")?data.github:`https://${data.github}`}
+                        target="_blank" rel="noopener noreferrer"
+                        style={{ color:"inherit",textDecoration:"none" }}>
+                        💻 {data.githubText || data.github.replace(/https?:\/\/(www\.)?/i,"")}
+                      </a>
+                    )}
+                    {data.portfolio &&(
+                      <a href={data.portfolio.startsWith("http")?data.portfolio:`https://${data.portfolio}`}
+                        target="_blank" rel="noopener noreferrer"
+                        style={{ color:"inherit",textDecoration:"none" }}>
+                        🌐 {data.portfolioText || data.portfolio.replace(/https?:\/\/(www\.)?/i,"")}
+                      </a>
+                    )}
                   </div>
                 )}
               </div>
@@ -563,7 +611,7 @@ export default function ProfessionalResumeEditor({
               {(editing||(data.projects||[]).length>0)&&(
                 <section>
                   <SecHead
-                    onAdd={editing?()=>addArr("projects",{name:"",description:"",technologies:[]}):null}
+                    onAdd={editing?()=>addArr("projects",{name:"",description:"",technologies:[],githubRepo:"",liveLink:""}):null}
                     addLabel="Project">
                     Projects
                   </SecHead>
@@ -578,11 +626,33 @@ export default function ProfessionalResumeEditor({
                           <EditArea value={proj.description} onChange={v=>setArr("projects",i,"description",v)} rows={3}
                             placeholder="Describe the project, your role, outcomes and technologies used…"
                             fontSize={FS.body}/>
+                          <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:4 }}>
+                            <EditText value={proj.githubRepo||""} onChange={v=>setArr("projects",i,"githubRepo",v)} placeholder="GitHub repo URL" fontSize={9.5}/>
+                            <EditText value={proj.liveLink||""}   onChange={v=>setArr("projects",i,"liveLink",v)}   placeholder="Live demo URL"    fontSize={9.5}/>
+                          </div>
                           <button onClick={()=>delArr("projects",i)} style={{ alignSelf:"flex-end",color:"#f87171",fontSize:9,background:"none",border:"none",cursor:"pointer" }}>Remove</button>
                         </div>
                       ):(
                         <>
-                          <div style={{ fontSize:11,fontWeight:700,color:"#312e81",lineHeight:1.25 }}>{proj.name}</div>
+                          <div style={{ display:"flex",alignItems:"center",gap:8,flexWrap:"wrap" }}>
+                            <div style={{ fontSize:11,fontWeight:700,color:"#312e81",lineHeight:1.25 }}>{proj.name}</div>
+                            {proj.githubRepo&&(
+                              <a href={proj.githubRepo.startsWith("http")?proj.githubRepo:`https://${proj.githubRepo}`}
+                                target="_blank" rel="noopener noreferrer"
+                                style={{ fontSize:8.5,color:"#4338ca",textDecoration:"none",display:"inline-flex",alignItems:"center",gap:2,
+                                  background:"#eef2ff",border:"1px solid #c7d2fe",borderRadius:3,padding:"1px 6px" }}>
+                                💻 GitHub
+                              </a>
+                            )}
+                            {proj.liveLink&&(
+                              <a href={proj.liveLink.startsWith("http")?proj.liveLink:`https://${proj.liveLink}`}
+                                target="_blank" rel="noopener noreferrer"
+                                style={{ fontSize:8.5,color:"#0369a1",textDecoration:"none",display:"inline-flex",alignItems:"center",gap:2,
+                                  background:"#e0f2fe",border:"1px solid #7dd3fc",borderRadius:3,padding:"1px 6px" }}>
+                                🔗 Live
+                              </a>
+                            )}
+                          </div>
                           <div style={{ fontSize:FS.body,color:C.textSub,marginTop:3,lineHeight:1.6 }}>{proj.description}</div>
                           {(proj.technologies||[]).length>0&&(
                             <div style={{ marginTop:5,display:"flex",flexWrap:"wrap",gap:3 }}>

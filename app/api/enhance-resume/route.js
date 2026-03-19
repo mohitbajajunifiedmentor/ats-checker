@@ -26,7 +26,7 @@ export async function POST(req) {
 
 TASK: Enhance the resume below to better match the job description.
 RULES:
-- Keep ALL personal data exactly as-is: name, email, phone, address, linkedin, github, portfolio.
+- Keep ALL personal data exactly as-is: name, email, phone, address, linkedin, linkedinText, github, githubText, portfolio, portfolioText.
 - Preserve ALL sections: experience, education, projects, certifications, languages.
 - Do NOT remove or omit any section, project, or experience entry.
 - Improve summary, experience descriptions, and skills for ATS keyword matching.
@@ -48,8 +48,11 @@ Return ONLY valid JSON with this exact structure (no markdown, no extra text):
   "phone": "${resumeData.phone || ""}",
   "address": "${resumeData.address || ""}",
   "linkedin": "${resumeData.linkedin || ""}",
+  "linkedinText": "${resumeData.linkedinText || ""}",
   "github": "${resumeData.github || ""}",
+  "githubText": "${resumeData.githubText || ""}",
   "portfolio": "${resumeData.portfolio || ""}",
+  "portfolioText": "${resumeData.portfolioText || ""}",
   "headline": "${resumeData.headline || resumeData.experience?.[0]?.title || ""}",
   "summary": "Enhanced 50-80 word summary with job-relevant keywords",
   "skills": ["skill1", "skill2", "... include all original skills plus relevant missing ones"],
@@ -73,7 +76,9 @@ Return ONLY valid JSON with this exact structure (no markdown, no extra text):
     {
       "name": "exact original project name",
       "description": "Enhanced description with technologies and impact",
-      "technologies": ["tech1", "tech2"]
+      "technologies": ["tech1", "tech2"],
+      "githubRepo": "exact original github repo URL or null",
+      "liveLink": "exact original live demo URL or null"
     }
   ],
   "certifications": [
@@ -128,9 +133,12 @@ Return ONLY valid JSON with this exact structure (no markdown, no extra text):
       email:       resumeData.email       || enhancedContent.email       || "",
       phone:       resumeData.phone       || enhancedContent.phone       || "",
       address:     resumeData.address     || enhancedContent.address     || "",
-      linkedin:    resumeData.linkedin    || enhancedContent.linkedin    || "",
-      github:      resumeData.github      || enhancedContent.github      || "",
-      portfolio:   resumeData.portfolio   || enhancedContent.portfolio   || "",
+      linkedin:      resumeData.linkedin      || enhancedContent.linkedin    || "",
+      linkedinText:  resumeData.linkedinText  || "",
+      github:        resumeData.github        || enhancedContent.github      || "",
+      githubText:    resumeData.githubText    || "",
+      portfolio:     resumeData.portfolio     || enhancedContent.portfolio   || "",
+      portfolioText: resumeData.portfolioText || "",
       headline:    enhancedContent.headline  || resumeData.headline  || resumeData.experience?.[0]?.title || "",
 
       // AI-enhanced content (fall back to original)
@@ -155,6 +163,8 @@ Return ONLY valid JSON with this exact structure (no markdown, no extra text):
           ...orig,
           description: enh?.description || orig.description,
           technologies: (enh?.technologies?.length ? enh.technologies : null) || orig.technologies || [],
+          githubRepo: orig.githubRepo || enh?.githubRepo || null,
+          liveLink:   orig.liveLink   || enh?.liveLink   || null,
         })
       ),
       certifications: (enhancedContent.certifications?.length ? enhancedContent.certifications : null) || resumeData.certifications || [],
@@ -217,6 +227,8 @@ function formatResumeText(data) {
     data.projects.forEach(p => {
       text += `${p.name}: ${p.description || ""}\n`;
       if (p.technologies?.length) text += `  Technologies: ${p.technologies.join(", ")}\n`;
+      if (p.githubRepo) text += `  GitHub: ${p.githubRepo}\n`;
+      if (p.liveLink)   text += `  Live: ${p.liveLink}\n`;
     });
     text += "\n";
   }

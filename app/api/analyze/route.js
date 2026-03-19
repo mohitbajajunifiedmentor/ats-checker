@@ -365,9 +365,12 @@ IMPORTANT: Return ONLY valid JSON with this exact structure. Do not include any 
   "email": "Email address or null",
   "phone": "Phone number or null",
   "address": "Full address or null",
-  "linkedin": "LinkedIn profile URL or null",
-  "github": "GitHub profile URL or null",
+  "linkedin": "LinkedIn profile URL (e.g. https://linkedin.com/in/username) or null",
+  "linkedinText": "LinkedIn display text as shown on the resume (e.g. 'username' or 'John Doe') or null",
+  "github": "GitHub profile URL (e.g. https://github.com/username) or null",
+  "githubText": "GitHub display text as shown on the resume (e.g. 'username') or null",
   "portfolio": "Portfolio website URL or null",
+  "portfolioText": "Portfolio display text as shown on the resume or null",
   "summary": "Professional summary/objective section text or null",
   "education": [
     {
@@ -390,7 +393,8 @@ IMPORTANT: Return ONLY valid JSON with this exact structure. Do not include any 
       "name": "Project name",
       "description": "Project description and technologies used",
       "technologies": ["Technology 1", "Technology 2"],
-      "link": "Project URL or null"
+      "githubRepo": "GitHub repository URL for this project or null",
+      "liveLink": "Live demo / deployed URL for this project or null"
     }
   ],
   "skills": ["Skill 1", "Skill 2", "Skill 3"],
@@ -453,8 +457,11 @@ ${resumeText}
       phone: structuredData.phone || null,
       address: structuredData.address || null,
       linkedin: structuredData.linkedin || null,
+      linkedinText: structuredData.linkedinText || null,
       github: structuredData.github || null,
+      githubText: structuredData.githubText || null,
       portfolio: structuredData.portfolio || null,
+      portfolioText: structuredData.portfolioText || null,
       summary: structuredData.summary || null,
       education: Array.isArray(structuredData.education) ? structuredData.education : [],
       experience: Array.isArray(structuredData.experience) ? structuredData.experience : [],
@@ -697,8 +704,11 @@ ${jobDescription.substring(0, 3000)}
         phone: sanitizeForDatabase(structuredData.phone || ""),
         address: sanitizeForDatabase(structuredData.address || ""),
         linkedin: sanitizeForDatabase(structuredData.linkedin || ""),
+        linkedinText: sanitizeForDatabase(structuredData.linkedinText || ""),
         github: sanitizeForDatabase(structuredData.github || ""),
+        githubText: sanitizeForDatabase(structuredData.githubText || ""),
         portfolio: sanitizeForDatabase(structuredData.portfolio || ""),
+        portfolioText: sanitizeForDatabase(structuredData.portfolioText || ""),
         summary: sanitizeForDatabase(structuredData.summary || ""),
         education: (structuredData.education || []).map(e => ({
           ...e,

@@ -35,8 +35,11 @@ model Resume {
   phone           String?
   address         String?
   linkedin        String?
+  linkedinText    String?
   github          String?
+  githubText      String?
   portfolio       String?
+  portfolioText   String?
   summary         String?  @db.Text
   education       Json?   // Array of education objects
   experience      Json?   // Array of experience objects
