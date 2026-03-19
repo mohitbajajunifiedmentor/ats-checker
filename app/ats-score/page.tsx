@@ -1,8 +1,10 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import KeywordAnalysis from "@/components/KeywordAnalysis";
+// KeywordAnalysis import retained for potential future use
+// import KeywordAnalysis from "@/components/KeywordAnalysis";
 import ProfessionalResumeEditor from "@/components/ProfessionalResumeEditor";
+import { uploadStore } from "@/app/upload-store";
 
 /* ─────────────────────────────────────────────────────
    Animated score counter
@@ -52,88 +54,9 @@ function ScoreRing({ score, size = 140 }: { score: number; size?: number }) {
 }                   
 
 /* ─────────────────────────────────────────────────────
-   Section grade card
+   Grade status type (used by buildSections + results render)
 ───────────────────────────────────────────────────── */
 type GradeStatus = "good" | "fair" | "poor" | "missing";
-
-function SectionCard({
-  icon,
-  title,
-  status,
-  score,
-  tip,
-  detail,
-}: {
-  icon: string;
-  title: string;
-  status: GradeStatus;
-  score: number;
-  tip: string;
-  detail: string;
-}) {
-  const [open, setOpen] = useState(false);
-
-  const cfg: Record<GradeStatus, { label: string; textColor: string; barColor: string; badge: string }> = {
-    good:    { label: "Good",    textColor: "text-emerald-400", barColor: "bg-emerald-500", badge: "bg-emerald-500/15 border-emerald-500/30 text-emerald-400" },
-    fair:    { label: "Fair",    textColor: "text-amber-400",   barColor: "bg-amber-500",   badge: "bg-amber-500/15 border-amber-500/30 text-amber-400" },
-    poor:    { label: "Needs Work", textColor: "text-red-400",  barColor: "bg-red-500",     badge: "bg-red-500/15 border-red-500/30 text-red-400" },
-    missing: { label: "Missing", textColor: "text-slate-400",   barColor: "bg-slate-600",   badge: "bg-slate-700/50 border-slate-600 text-slate-400" },
-  };
-  const { label, textColor, barColor, badge } = cfg[status];
-
-  return (
-    <div
-      className={`rounded-2xl border bg-slate-900/60 overflow-hidden transition-all duration-200 cursor-pointer hover:shadow-lg ${
-        status === "good"
-          ? "border-emerald-500/20 hover:border-emerald-500/40"
-          : status === "fair"
-          ? "border-amber-500/20 hover:border-amber-500/40"
-          : status === "poor"
-          ? "border-red-500/20 hover:border-red-500/40"
-          : "border-slate-700 hover:border-slate-600"
-      }`}
-      onClick={() => setOpen((o) => !o)}
-    >
-      <div className="p-5">
-        <div className="flex items-center gap-3 mb-3">
-          <span className="text-xl">{icon}</span>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-sm font-bold text-slate-200">{title}</span>
-              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${badge}`}>
-                {label}
-              </span>
-            </div>
-          </div>
-          <span className={`text-sm font-bold flex-shrink-0 ${textColor}`}>{score}%</span>
-        </div>
-
-        {/* Progress bar */}
-        <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all duration-1000 ${barColor}`}
-            style={{ width: `${score}%` }}
-          />
-        </div>
-
-        {/* Quick tip (always visible) */}
-        <p className="mt-3 text-xs text-slate-400 leading-relaxed">{tip}</p>
-      </div>
-
-      {/* Expanded detail */}
-      {open && (
-        <div className={`border-t px-5 py-4 text-xs leading-relaxed ${
-          status === "good" ? "border-emerald-500/20 bg-emerald-500/5 text-emerald-200"
-          : status === "fair" ? "border-amber-500/20 bg-amber-500/5 text-amber-200"
-          : status === "poor" ? "border-red-500/20 bg-red-500/5 text-red-200"
-          : "border-slate-700 bg-slate-800/30 text-slate-300"
-        }`}>
-          {detail}
-        </div>
-      )}
-    </div>
-  );
-}
 
 /* ─────────────────────────────────────────────────────
    Improvement card
@@ -271,7 +194,7 @@ function buildSections(structuredData: any, analysis: any) {
 /* ─────────────────────────────────────────────────────
    Derive improvement cards
 ───────────────────────────────────────────────────── */
-function buildImprovements(structuredData: any, analysis: any, sections: ReturnType<typeof buildSections>) {
+function buildImprovements(structuredData: any, analysis: any, _sections: ReturnType<typeof buildSections>) {
   const improvements: { impact: "High" | "Medium" | "Low"; title: string; description: string }[] = [];
   const sd = structuredData || {};
   const an = analysis || {};
@@ -333,29 +256,132 @@ function buildImprovements(structuredData: any, analysis: any, sections: ReturnT
 /* ─────────────────────────────────────────────────────
    PAGE
 ───────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────
+   Upload scan steps
+───────────────────────────────────────────────────── */
+const SCAN_STEPS = [
+  { id:1, label:"Uploading Resume",     icon:"📤", desc:"Securely transmitting your document to our servers..." },
+  { id:2, label:"Parsing PDF",          icon:"📄", desc:"Extracting text, structure, and formatting from your resume..." },
+  { id:3, label:"Analyzing Keywords",   icon:"🔍", desc:"Matching critical keywords against ATS requirements..." },
+  { id:4, label:"Calculating ATS Score",icon:"🎯", desc:"GPT-4o computing your personalized ATS score..." },
+];
+
 export default function AtsScorePage() {
   const router = useRouter();
   const [result, setResult] = useState<any>(null);
-  const [phase, setPhase] = useState<"loading" | "results" | "enhancing" | "enhanced">("loading");
+  const [phase, setPhase] = useState<"uploading" | "scanning" | "finalizing" | "loading" | "results" | "enhancing" | "enhanced">("loading");
   const [enhancedData, setEnhancedData] = useState<any>(null);
   const [enhanceError, setEnhanceError] = useState<string | null>(null);
   const [enhanceProgress, setEnhanceProgress] = useState(0);
-  const [activeSection, setActiveSection] = useState<"overview" | "keywords" | "improve" | "resume">("overview");
   const [resumeView, setResumeView]       = useState<"original" | "enhanced">("original");
 
+  /* Upload progress state */
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadProg, setUploadProg] = useState(0);
+  const [scanStep, setScanStep] = useState(0);
+  const [scanProgress, setScanProgress] = useState(0);
+  const apiResultRef = useRef<any>(null);
+  const phaseRef = useRef(phase);
+  phaseRef.current = phase;
+
+  /* Job description modal state */
+  const [showJdModal, setShowJdModal] = useState(false);
+  const [jobDescInput, setJobDescInput] = useState("");
+
+  /* Resume template collapsible */
+  const [showResumeTemplate, setShowResumeTemplate] = useState(false);
+
+  const showResults = useCallback((data: any) => {
+    window.localStorage.setItem("atsAnalyzeResult", JSON.stringify(data));
+    setResult(data);
+    setPhase("results");
+  }, []);
+
+  /* Upload progress animation */
   useEffect(() => {
+    if (phase !== "uploading") return;
+    let cur = 0;
+    const iv = setInterval(() => {
+      cur += Math.max(0.6, (100 - cur) * 0.034);
+      if (cur >= 99.5) {
+        cur = 100; setUploadProg(100); clearInterval(iv);
+        setTimeout(() => { setPhase("scanning"); setScanStep(1); setScanProgress(0); }, 650);
+      } else setUploadProg(cur);
+    }, 40);
+    return () => clearInterval(iv);
+  }, [phase]);
+
+  /* Scanning timeline */
+  useEffect(() => {
+    if (phase !== "scanning") return;
+    const schedule = [
+      {delay:300,step:1,prog:10},{delay:950,step:1,prog:22},{delay:1800,step:2,prog:36},
+      {delay:2700,step:2,prog:50},{delay:3600,step:3,prog:63},{delay:4500,step:3,prog:75},
+      {delay:5400,step:4,prog:85},{delay:6300,step:4,prog:93},
+    ];
+    const timers = schedule.map(({ delay, step, prog }) =>
+      setTimeout(() => { setScanStep(step); setScanProgress(prog); }, delay));
+    const done = setTimeout(() => {
+      setScanProgress(95);
+      if (apiResultRef.current) { setScanProgress(100); setTimeout(() => showResults(apiResultRef.current), 400); }
+      else setPhase("finalizing");
+    }, 7500);
+    return () => { timers.forEach(clearTimeout); clearTimeout(done); };
+  }, [phase, showResults]);
+
+  /* Finalizing pulse */
+  useEffect(() => {
+    if (phase !== "finalizing") return;
+    const iv = setInterval(() => setScanProgress(p => p >= 98 ? 95 : p + 0.4), 200);
+    return () => clearInterval(iv);
+  }, [phase]);
+
+  useEffect(() => {
+    /* Check for a pending upload started on the home page */
+    const pendingFile    = uploadStore.getPendingFile();
+    const pendingPromise = uploadStore.getPendingPromise();
+    if (pendingFile && pendingPromise) {
+      uploadStore.clearAll();
+      setUploadFile(pendingFile);
+      apiResultRef.current = null;
+      setScanStep(1); setScanProgress(0);
+      setPhase("scanning");
+      pendingPromise
+        .then(data => {
+          if (data.success) {
+            apiResultRef.current = data;
+            if (phaseRef.current === "finalizing") {
+              setScanProgress(100);
+              setTimeout(() => showResults(data), 400);
+            }
+          } else {
+            setPhase("loading");
+          }
+        })
+        .catch(() => { setPhase("loading"); });
+      return;
+    }
+
+    /* Fallback: check localStorage for existing result */
     const stored = window.localStorage.getItem("atsAnalyzeResult");
-    if (!stored) { router.replace("/upload"); return; }
+    if (!stored) { router.replace("/"); return; }
     try {
       const parsed = JSON.parse(stored);
       if (!parsed.success) throw new Error("invalid");
       setResult(parsed);
       setPhase("results");
-    } catch { router.replace("/upload"); }
-  }, [router]);
+    } catch { router.replace("/"); }
+  }, [router, showResults]);
 
-  const handleEnhance = async () => {
+  /* Open the job-description modal before enhancing */
+  const requestEnhance = () => {
+    setJobDescInput("");
+    setShowJdModal(true);
+  };
+
+  const handleEnhance = async (jobDescription: string) => {
     if (!result) return;
+    setShowJdModal(false);
     setPhase("enhancing");
     setEnhanceError(null);
     setEnhanceProgress(0);
@@ -368,7 +394,7 @@ export default function AtsScorePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           resumeData: result.structuredData,
-          jobDescription: result.jobDescription || "",
+          jobDescription: jobDescription || result.jobDescription || "",
           resumeId: result.resumeId,
         }),
       });
@@ -383,7 +409,7 @@ export default function AtsScorePage() {
       setTimeout(() => {
         setEnhancedData(json.enhanced);
         setResumeView("enhanced");
-        setActiveSection("resume");
+        setShowResumeTemplate(true);
         setPhase("results");
       }, 400);
     } catch {
@@ -400,6 +426,118 @@ export default function AtsScorePage() {
       body: JSON.stringify({ resumeId: enhancedData?.resumeId || result?.resumeId, structuredData: editedData }),
     }).catch(console.error);
   };
+
+  /* ── UPLOADING ── */
+  if (phase === "uploading" && uploadFile) {
+    const done = uploadProg >= 100;
+    const sz = 168, r = 65, circ = 2 * Math.PI * r;
+    return (
+      <div className="min-h-screen bg-[#030712] text-slate-100 flex items-center justify-center px-4">
+        <div className="max-w-sm w-full glass-card rounded-3xl border border-slate-700/50 p-8 shadow-2xl" style={{ background:"rgba(15,23,42,.75)", backdropFilter:"blur(28px)" }}>
+          <div className="text-center mb-6">
+            <h2 className="text-xl font-bold text-white">Uploading Resume</h2>
+            <p className="text-sm text-slate-400 mt-1">Securely transmitting to our servers…</p>
+          </div>
+          <div className="flex flex-col items-center gap-7">
+            <div className="relative" style={{ width:sz, height:sz }}>
+              <div className="absolute inset-0 rounded-full" style={{ boxShadow:`0 0 ${done?60:35}px rgba(16,185,129,${done?.55:.22})`, transition:"box-shadow .7s ease" }}/>
+              <div className="absolute inset-[-6px] rounded-full opacity-30" style={{ border:"1px dashed rgba(16,185,129,.4)", animation:"spin 8s linear infinite" }}/>
+              <svg width={sz} height={sz} className="-rotate-90" viewBox={`0 0 ${sz} ${sz}`}>
+                <circle cx={sz/2} cy={sz/2} r={r} fill="none" stroke="#1e293b" strokeWidth="10"/>
+                <circle cx={sz/2} cy={sz/2} r={r} fill="none" stroke="#10b981" strokeWidth="10"
+                  strokeDasharray={circ} strokeDashoffset={circ-(uploadProg/100)*circ} strokeLinecap="round"
+                  style={{ filter:"drop-shadow(0 0 10px rgba(16,185,129,.65))", transition:"stroke-dashoffset .08s linear" }}/>
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                {done ? <span className="text-5xl">✅</span> : (
+                  <><span className="text-3xl font-black text-emerald-400">{Math.round(uploadProg)}%</span>
+                  <span className="text-xs text-slate-500 mt-1">uploading</span></>
+                )}
+              </div>
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-semibold text-slate-200 max-w-[230px] truncate">{uploadFile.name}</p>
+              <p className="text-xs text-slate-500 mt-1">{(uploadFile.size/1024/1024).toFixed(2)} MB · PDF</p>
+            </div>
+            <div className="w-full">
+              <div className="flex justify-between text-xs mb-2">
+                <span className={uploadProg>=100?"text-emerald-400":"text-slate-500"}>{uploadProg>=100?"Upload complete!":"Uploading resume…"}</span>
+                <span className="text-emerald-400 font-bold">{Math.round(uploadProg)}%</span>
+              </div>
+              <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                <div className="h-full rounded-full" style={{ width:`${uploadProg}%`, background:"linear-gradient(90deg,#10b981,#14b8a6,#34d399)", transition:"width .08s linear" }}/>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── SCANNING / FINALIZING ── */
+  if (phase === "scanning" || phase === "finalizing") {
+    return (
+      <div className="min-h-screen bg-[#030712] text-slate-100 flex items-center justify-center px-4">
+        <div className="max-w-sm w-full rounded-3xl border border-slate-700/50 p-7 shadow-2xl" style={{ background:"rgba(15,23,42,.75)", backdropFilter:"blur(28px)" }}>
+          <div className="text-center mb-7">
+            <h2 className="text-xl font-bold text-white">AI is Analyzing Your Resume</h2>
+            <p className="text-sm text-slate-400 mt-1">
+              {phase === "finalizing" ? "Almost there — finalizing your results…" : "GPT-4o is evaluating your resume against ATS rubrics"}
+            </p>
+          </div>
+          <div className="flex justify-center mb-7">
+            <div className="relative w-36 h-48 rounded-2xl border-2 border-slate-700 bg-slate-900 shadow-xl overflow-hidden">
+              <div className="px-3.5 pt-4 space-y-2">
+                <div className="h-2.5 w-1/2 rounded bg-slate-700"/>
+                {[1,.9,.8,1,.75,.9,.85,.7].map((w,i) => (
+                  <div key={i} className="h-1.5 rounded bg-slate-800" style={{ width:`${w*100}%` }}/>
+                ))}
+              </div>
+              <div className="absolute left-0 right-0 h-px" style={{ top:`${Math.min(scanProgress,98)}%`, background:"linear-gradient(90deg,transparent,rgba(52,211,153,.95),transparent)", transition:"top .7s ease-in-out" }}/>
+            </div>
+          </div>
+          <div className="space-y-2 mb-6">
+            {SCAN_STEPS.map(step => {
+              const active = scanStep === step.id && phase !== "finalizing";
+              const done   = scanStep > step.id || phase === "finalizing";
+              return (
+                <div key={step.id} className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border transition-all duration-300 ${active?"border-emerald-500/50 bg-emerald-500/7":done?"border-slate-800/50 bg-slate-900/25":"border-transparent opacity-25"}`}>
+                  <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm ${done?"bg-emerald-500/20 text-emerald-400":active?"bg-emerald-500/10 text-emerald-300":"bg-slate-800 text-slate-600"}`}>
+                    {done ? "✓" : step.icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-semibold ${done?"text-emerald-400":active?"text-emerald-300":"text-slate-600"}`}>{step.label}</p>
+                    {active && <p className="text-xs text-slate-400 mt-0.5 truncate">{step.desc}</p>}
+                  </div>
+                  {active && <div className="shrink-0 w-4 h-4 rounded-full border-2 border-emerald-400 border-t-transparent animate-spin"/>}
+                </div>
+              );
+            })}
+            {phase === "finalizing" && (
+              <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-violet-500/40 bg-violet-500/7">
+                <div className="shrink-0 w-8 h-8 rounded-full bg-violet-500/15 text-violet-300 flex items-center justify-center">✨</div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-violet-300">Finalizing Results</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Generating your personalized ATS insights…</p>
+                </div>
+                <div className="shrink-0 w-4 h-4 rounded-full border-2 border-violet-400 border-t-transparent animate-spin"/>
+              </div>
+            )}
+          </div>
+          <div>
+            <div className="flex justify-between text-xs mb-1.5">
+              <span className="text-slate-500">{phase === "finalizing" ? "Finalizing…" : "Scanning document…"}</span>
+              <span className="text-emerald-400 font-bold">{Math.round(scanProgress)}%</span>
+            </div>
+            <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+              <div className="h-full rounded-full transition-all duration-500 ease-out"
+                style={{ width:`${scanProgress}%`, background:"linear-gradient(90deg,#10b981,#14b8a6)" }}/>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   /* ── LOADING ── */
   if (phase === "loading") {
@@ -467,15 +605,246 @@ export default function AtsScorePage() {
 
 
   /* ── RESULTS PAGE ── */
+
+  /* Derive per-section found/issues/fix data inline for the expanded cards */
+  const contactFields = ["name","email","phone","address","linkedin","github","portfolio"];
+  const contactPresent = contactFields.filter(f => sd[f] && (sd[f] as string).trim().length > 0);
+  const contactMissing = contactFields.filter(f => !sd[f] || !(sd[f] as string).trim().length);
+
+  const summaryWords = sd.summary ? (sd.summary as string).split(/\s+/).length : 0;
+  const summaryPreview = sd.summary ? (sd.summary as string).split(/\s+/).slice(0, 30).join(" ") + (summaryWords > 30 ? "…" : "") : "";
+
+  const expEntries: any[] = sd.experience || [];
+  const expThin = expEntries.filter(e => !e.description || (e.description as string).length < 80);
+
+  const skillsList: string[] = sd.skills || [];
+  const matchedKws: string[] = analysis.matchedKeywords || [];
+  const missingKws: string[] = analysis.missingKeywords || [];
+  const totalKws = matchedKws.length + missingKws.length;
+  const kwPct = totalKws === 0 ? 50 : Math.round((matchedKws.length / totalKws) * 100);
+
+  const statusCfg: Record<GradeStatus, { label: string; textColor: string; barColor: string; badge: string; border: string }> = {
+    good:    { label: "Good",       textColor: "text-emerald-400", barColor: "bg-emerald-500", badge: "bg-emerald-500/15 border-emerald-500/30 text-emerald-400", border: "border-emerald-500/25" },
+    fair:    { label: "Fair",       textColor: "text-amber-400",   barColor: "bg-amber-500",   badge: "bg-amber-500/15 border-amber-500/30 text-amber-400",       border: "border-amber-500/25" },
+    poor:    { label: "Needs Work", textColor: "text-red-400",     barColor: "bg-red-500",     badge: "bg-red-500/15 border-red-500/30 text-red-400",             border: "border-red-500/25" },
+    missing: { label: "Missing",    textColor: "text-slate-400",   barColor: "bg-slate-600",   badge: "bg-slate-700/50 border-slate-600 text-slate-400",          border: "border-slate-700" },
+  };
+
+  /* Per-section found/issues/fix triples */
+  const sectionDetails: {
+    found: React.ReactNode;
+    issues: string[];
+    fix: string[];
+  }[] = [
+    /* 0 — Contact */
+    {
+      found: (
+        <div className="space-y-1">
+          {contactFields.map(f => (
+            <div key={f} className="flex items-center gap-2 text-xs">
+              <span className={contactPresent.includes(f) ? "text-emerald-400" : "text-slate-600"}>
+                {contactPresent.includes(f) ? "✓" : "✗"}
+              </span>
+              <span className={`capitalize ${contactPresent.includes(f) ? "text-slate-300" : "text-slate-600"}`}>{f}</span>
+              {contactPresent.includes(f) && sd[f] && (
+                <span className="text-slate-500 truncate max-w-[120px]">{String(sd[f]).slice(0,30)}</span>
+              )}
+            </div>
+          ))}
+        </div>
+      ),
+      issues: contactMissing.length === 0
+        ? ["All contact fields detected — no issues found."]
+        : contactMissing.map(f => `Missing ${f.charAt(0).toUpperCase() + f.slice(1)} — recruiters and ATS cannot reach you without it`),
+      fix: [
+        "Place contact info in a clean single-line or two-line header at the very top of your resume.",
+        "Use a professional email (firstname.lastname@gmail.com) — avoid nicknames or old university emails.",
+        contactMissing.includes("linkedin") ? "Create or update your LinkedIn profile and add the URL (linkedin.com/in/yourname)." : "Ensure your LinkedIn URL is shortened and current.",
+        contactMissing.includes("github") || contactMissing.includes("portfolio") ? "Add a GitHub or portfolio URL if applying for technical or creative roles." : "Keep your GitHub/portfolio up to date with your best work.",
+      ],
+    },
+
+    /* 1 — Summary */
+    {
+      found: sd.summary ? (
+        <div className="space-y-2">
+          <div className="text-xs text-slate-400">{summaryWords} words detected</div>
+          <p className="text-xs text-slate-300 leading-relaxed italic">"{summaryPreview}"</p>
+          <div className={`text-xs font-semibold ${summaryWords >= 40 ? "text-emerald-400" : summaryWords >= 20 ? "text-amber-400" : "text-red-400"}`}>
+            {summaryWords >= 40 ? "Good length" : summaryWords >= 20 ? "Too short — aim for 40–80 words" : "Very brief — expand significantly"}
+          </div>
+        </div>
+      ) : (
+        <p className="text-xs text-red-400 font-semibold">No professional summary detected in your resume.</p>
+      ),
+      issues: !sd.summary
+        ? ["No professional summary found — this is one of the first sections ATS and recruiters read.", "Without a summary, ATS cannot quickly match your profile to the role."]
+        : [
+            ...(summaryWords < 40 ? [`Summary is only ${summaryWords} words — too brief to include enough keywords.`] : []),
+            ...(missingKws.length > 0 ? [`Missing keywords not present in summary: ${missingKws.slice(0,3).join(", ")}`] : []),
+            "Ensure summary mentions your job title, years of experience, and a quantified achievement.",
+          ],
+      fix: [
+        "Write a 40–80 word summary starting with: '[Job Title] with [X] years of experience in [domain].'",
+        `Include 2–3 hard skills from the job description — for example: "${missingKws.slice(0,3).join('", "') || "relevant technologies"}"`,
+        "Add one quantified achievement: e.g., 'Delivered a 35% reduction in load time by refactoring the API layer.'",
+        "Tailor the summary to each role — copy the exact job title from the job posting.",
+      ],
+    },
+
+    /* 2 — Experience */
+    {
+      found: expEntries.length === 0 ? (
+        <p className="text-xs text-red-400 font-semibold">No work experience entries detected.</p>
+      ) : (
+        <div className="space-y-2">
+          {expEntries.slice(0,5).map((e: any, i: number) => (
+            <div key={i} className="text-xs">
+              <span className="text-slate-200 font-semibold">{e.title || "Unknown Role"}</span>
+              {e.company && <span className="text-slate-500"> · {e.company}</span>}
+              {e.duration && <span className="text-slate-600"> ({e.duration})</span>}
+              <span className={`ml-2 text-xs ${(!e.description || e.description.length < 80) ? "text-red-400" : "text-emerald-400"}`}>
+                {(!e.description || e.description.length < 80) ? "thin" : "detailed"}
+              </span>
+            </div>
+          ))}
+          {expEntries.length > 5 && <p className="text-xs text-slate-600">+{expEntries.length - 5} more roles</p>}
+        </div>
+      ),
+      issues: expEntries.length === 0
+        ? ["No experience section found — this is critical for ATS scoring.", "Without experience, ATS cannot assess your role fit."]
+        : [
+            ...(expThin.length > 0 ? [`${expThin.length} role(s) have thin or missing descriptions — less than 80 characters.`] : []),
+            "Check that each role has 3–5 bullet points starting with strong action verbs.",
+            "Bullets without quantified results score lower in ATS semantic analysis.",
+          ],
+      fix: [
+        "For each role, add 3–5 bullets. Start each with a strong action verb: Led, Built, Reduced, Delivered, Increased.",
+        "Quantify every result: 'Improved API response time by 40%' beats 'Improved API performance'.",
+        "Use exact terminology from the job description in your bullet points to maximize keyword matching.",
+        "List experience in reverse-chronological order. Include company name, role title, and date range for every entry.",
+      ],
+    },
+
+    /* 3 — Education */
+    {
+      found: (sd.education || []).length === 0 ? (
+        <p className="text-xs text-red-400 font-semibold">No education entries detected.</p>
+      ) : (
+        <div className="space-y-2">
+          {(sd.education as any[]).map((e: any, i: number) => (
+            <div key={i} className="text-xs">
+              <span className="text-slate-200 font-semibold">{e.degree || "Degree"}</span>
+              {e.institution && <span className="text-slate-500"> · {e.institution}</span>}
+              {e.year && <span className="text-slate-600"> ({e.year})</span>}
+            </div>
+          ))}
+        </div>
+      ),
+      issues: (sd.education || []).length === 0
+        ? ["No education section detected — add at least your highest qualification.", "Missing degree, institution, or year will lower your ATS education score."]
+        : [
+            "Verify that degree title, institution name, and graduation year are all present.",
+            "Add GPA if it is 3.5 or above — some ATS systems filter on this.",
+          ],
+      fix: [
+        "Add each qualification with: Degree Name, Institution, Graduation Year (or 'Expected [Year]').",
+        "Place your highest qualification first (reverse-chronological order).",
+        "Include GPA if 3.5+ and the job posting is entry-level or asks for it.",
+        "List relevant coursework or honours if you are a recent graduate with limited experience.",
+      ],
+    },
+
+    /* 4 — Skills */
+    {
+      found: skillsList.length === 0 ? (
+        <p className="text-xs text-red-400 font-semibold">No skills detected in your resume.</p>
+      ) : (
+        <div className="space-y-2">
+          <p className="text-xs text-slate-400">{skillsList.length} skills found:</p>
+          <div className="flex flex-wrap gap-1.5">
+            {skillsList.slice(0, 15).map((sk: string, i: number) => (
+              <span key={i} className="bg-blue-500/10 border border-blue-500/25 text-blue-300 text-xs px-2.5 py-0.5 rounded-full">{sk}</span>
+            ))}
+            {skillsList.length > 15 && <span className="text-xs text-slate-600">+{skillsList.length - 15} more</span>}
+          </div>
+        </div>
+      ),
+      issues: [
+        ...(skillsList.length === 0 ? ["No skills section found — ATS cannot perform keyword matching without it."] : []),
+        ...(skillsList.length < 8 && skillsList.length > 0 ? [`Only ${skillsList.length} skills listed — aim for 12–20.`] : []),
+        ...(missingKws.length > 0 ? [`${Math.min(missingKws.length, 5)} job-required keywords are absent from your skills: ${missingKws.slice(0,5).join(", ")}`] : []),
+      ],
+      fix: [
+        "Create a dedicated 'Skills' or 'Technical Skills' section — do not bury skills in job descriptions.",
+        `Add these missing JD keywords if you have experience with them: "${missingKws.slice(0,6).join('", "') || "see keyword section below"}"`,
+        "Use exact wording from the job description — if it says 'React.js' use 'React.js', not just 'React'.",
+        "Aim for 12–20 skills covering: programming languages, frameworks, tools, platforms, and domain skills.",
+      ],
+    },
+
+    /* 5 — Keyword Match */
+    {
+      found: (
+        <div className="space-y-2">
+          <div className="flex gap-4 text-xs">
+            <div>
+              <span className="text-emerald-400 font-bold text-base">{matchedKws.length}</span>
+              <span className="text-slate-500 ml-1">matched</span>
+            </div>
+            <div>
+              <span className="text-amber-400 font-bold text-base">{missingKws.length}</span>
+              <span className="text-slate-500 ml-1">missing</span>
+            </div>
+          </div>
+          <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden">
+            <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${kwPct}%` }} />
+          </div>
+          <p className="text-xs text-slate-400">{kwPct}% keyword alignment with the job description</p>
+        </div>
+      ),
+      issues: [
+        ...(missingKws.length > 0 ? [`${missingKws.length} keywords from the job description are not in your resume.`] : []),
+        ...(kwPct < 50 ? ["Keyword match below 50% — your resume may be auto-rejected by ATS before a human sees it."] : []),
+        "ATS compares your resume word-for-word against the job description — synonyms often do not match.",
+      ],
+      fix: [
+        "Add missing keywords naturally into your Skills section and Experience bullet points.",
+        "Use the exact spelling from the job description — 'Machine Learning' and 'ML' are different tokens.",
+        "Do not stuff keywords at the bottom in white text — modern ATS detects this and penalises it.",
+        "Re-read the job description and highlight every technology, certification, and methodology — add the ones you have.",
+      ],
+    },
+  ];
+
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100 px-4 py-10">
-      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}`}</style>
+    <main className="min-h-screen bg-[#030712] text-slate-100 px-4 pb-20">
+      <style>{`
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+        @keyframes modalIn{from{opacity:0;transform:scale(.95) translateY(12px)}to{opacity:1;transform:scale(1) translateY(0)}}
+        .modal-in{animation:modalIn .25s cubic-bezier(.34,1.56,.64,1) both}
+        @keyframes fadeInUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+        .fade-in-0{animation:fadeInUp .5s ease both;animation-delay:0ms}
+        .fade-in-1{animation:fadeInUp .5s ease both;animation-delay:80ms}
+        .fade-in-2{animation:fadeInUp .5s ease both;animation-delay:160ms}
+        .fade-in-3{animation:fadeInUp .5s ease both;animation-delay:240ms}
+        .fade-in-4{animation:fadeInUp .5s ease both;animation-delay:320ms}
+        .fade-in-5{animation:fadeInUp .5s ease both;animation-delay:400ms}
+        .fade-in-6{animation:fadeInUp .5s ease both;animation-delay:480ms}
+        .fade-in-7{animation:fadeInUp .5s ease both;animation-delay:560ms}
+        .fade-in-8{animation:fadeInUp .5s ease both;animation-delay:640ms}
+        .fade-in-9{animation:fadeInUp .5s ease both;animation-delay:720ms}
+        .fade-in-10{animation:fadeInUp .5s ease both;animation-delay:800ms}
+        .fade-in-11{animation:fadeInUp .5s ease both;animation-delay:880ms}
+      `}</style>
 
-      <div className="max-w-5xl mx-auto space-y-8">
+      <div className="max-w-5xl mx-auto space-y-8 pt-6">
 
-        {/* Top nav */}
-        <div className="flex items-center justify-between">
-          <button onClick={() => router.push("/")} className="text-sm text-slate-400 hover:text-slate-200 transition-colors">← Home</button>
+        {/* ── TOP NAV ── */}
+        <div className="fade-in-0 flex items-center justify-between">
+          <button onClick={() => router.push("/")} className="text-sm text-slate-400 hover:text-slate-200 transition-colors flex items-center gap-1">
+            ← Home
+          </button>
           <button
             onClick={() => { window.localStorage.removeItem("atsAnalyzeResult"); router.push("/upload"); }}
             className="text-sm text-slate-400 hover:text-slate-200 transition-colors border border-slate-700 rounded-lg px-4 py-2 hover:border-slate-600"
@@ -485,60 +854,62 @@ export default function AtsScorePage() {
         </div>
 
         {/* ── HERO SCORE CARD ── */}
-        <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-8 shadow-2xl">
+        <div className="fade-in-1 rounded-3xl border border-slate-800 bg-slate-900/60 p-8 shadow-2xl">
           <div className="flex flex-col md:flex-row items-center gap-8">
 
-            {/* Ring */}
+            {/* Animated ring */}
             <div className="relative flex-shrink-0">
-              <ScoreRing score={score} size={140} />
+              <ScoreRing score={score} size={160} />
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5">
-                <span className={`text-4xl font-black ${scoreColor}`}>
+                <span className={`text-5xl font-black ${scoreColor}`}>
                   <AnimatedScore target={score} />
                 </span>
                 <span className="text-xs text-slate-500">/ 100</span>
+                <span className={`text-[10px] font-bold mt-0.5 ${scoreColor}`}>{scoreLabel}</span>
               </div>
             </div>
 
-            {/* Details */}
+            {/* Stats */}
             <div className="flex-1 text-center md:text-left">
               <div className={`inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-bold mb-3 ${scoreBg}`}>
                 {scoreLabel}
               </div>
-              <p className="text-slate-300 text-sm leading-relaxed mb-5 max-w-lg">{scoreAdvice}</p>
+              <p className="text-slate-300 text-sm leading-relaxed mb-6 max-w-lg">
+                {analysis.overallSummary || scoreAdvice}
+              </p>
 
-              <div className="flex flex-wrap justify-center md:justify-start gap-6">
-                <div className="text-center">
-                  <p className="text-2xl font-black text-emerald-400">{(analysis.matchedKeywords || []).length}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">Keywords Matched</p>
+              {/* 4 stat pills */}
+              <div className="flex flex-wrap justify-center md:justify-start gap-3">
+                <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 px-4 py-2 text-center min-w-[90px]">
+                  <p className="text-2xl font-black text-emerald-400">{matchedKws.length}</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Keywords Matched</p>
                 </div>
-                <div className="text-center">
-                  <p className="text-2xl font-black text-amber-400">{(analysis.missingKeywords || []).length}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">Keywords Missing</p>
+                <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 px-4 py-2 text-center min-w-[90px]">
+                  <p className="text-2xl font-black text-amber-400">{missingKws.length}</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Keywords Missing</p>
                 </div>
-                <div className="text-center">
-                  <p className="text-2xl font-black text-blue-400">{(sd.skills || []).length}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">Skills Detected</p>
+                <div className="rounded-xl border border-blue-500/25 bg-blue-500/5 px-4 py-2 text-center min-w-[90px]">
+                  <p className="text-2xl font-black text-blue-400">{skillsList.length}</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Skills Detected</p>
                 </div>
-                <div className="text-center">
-                  <p className="text-2xl font-black text-purple-400">{(sd.experience || []).length}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">Roles Found</p>
+                <div className="rounded-xl border border-purple-500/25 bg-purple-500/5 px-4 py-2 text-center min-w-[90px]">
+                  <p className="text-2xl font-black text-purple-400">{expEntries.length}</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Roles Found</p>
                 </div>
               </div>
             </div>
 
-            {/* Gauge columns (desktop) */}
-            <div className="hidden lg:flex flex-col gap-2 w-40 flex-shrink-0">
-              {sections.map((s) => (
+            {/* Mini section bars (desktop) */}
+            <div className="hidden lg:flex flex-col gap-2.5 w-44 flex-shrink-0">
+              {sections.map(s => (
                 <div key={s.title}>
-                  <div className="flex justify-between text-xs text-slate-500 mb-0.5">
-                    <span className="truncate">{s.title.split(" ")[0]}</span>
-                    <span>{s.score}%</span>
+                  <div className="flex justify-between text-[11px] text-slate-500 mb-1">
+                    <span className="truncate max-w-[110px]">{s.title.split(" ")[0]}</span>
+                    <span className={statusCfg[s.status as GradeStatus].textColor}>{s.score}%</span>
                   </div>
-                  <div className="h-1 rounded-full bg-slate-800">
+                  <div className="h-1.5 rounded-full bg-slate-800">
                     <div
-                      className={`h-1 rounded-full transition-all duration-1000 ${
-                        s.status === "good" ? "bg-emerald-500" : s.status === "fair" ? "bg-amber-500" : "bg-red-500"
-                      }`}
+                      className={`h-1.5 rounded-full transition-all duration-1000 ${statusCfg[s.status as GradeStatus].barColor}`}
                       style={{ width: `${s.score}%` }}
                     />
                   </div>
@@ -548,224 +919,208 @@ export default function AtsScorePage() {
           </div>
         </div>
 
-        {/* ── TABS ── */}
-        <div className="flex flex-wrap gap-1 p-1 rounded-xl bg-slate-900/60 border border-slate-800 w-fit">
-          {(["overview", "keywords", "improve", "resume"] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveSection(tab)}
-              className={`px-5 py-2 rounded-lg text-sm font-semibold capitalize transition-all ${
-                activeSection === tab
-                  ? "bg-slate-800 text-slate-100 shadow"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              {tab === "overview" ? "📊 Overview" : tab === "keywords" ? "🔑 Keywords" : tab === "improve" ? "⚡ Improvements" : "📄 Resume Template"}
-            </button>
-          ))}
+        {/* ── SECTION HEADING ── */}
+        <div className="fade-in-2 text-center">
+          <h2 className="text-2xl font-bold text-slate-50 mb-1">Resume Analysis — Section by Section</h2>
+          <p className="text-sm text-slate-400">Every section is fully expanded below with specific findings, issues, and actionable fixes.</p>
         </div>
 
-        {/* ── OVERVIEW TAB ── */}
-        {activeSection === "overview" && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-xl font-bold text-slate-50 mb-1">Section Breakdown</h2>
-              <p className="text-sm text-slate-400 mb-5">
-                Click any card to see detailed guidance. Green = passing ATS threshold, Amber = needs improvement, Red = critical issue.
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {sections.map((s) => (
-                  <SectionCard key={s.title} {...s} />
-                ))}
+        {/* ── 6 SECTION CARDS ── */}
+        {sections.map((sec, idx) => {
+          const cfg = statusCfg[sec.status as GradeStatus];
+          const det = sectionDetails[idx];
+          return (
+            <div
+              key={sec.title}
+              className={`fade-in-${3 + idx} rounded-2xl border ${cfg.border} bg-slate-900/60 overflow-hidden shadow-lg`}
+            >
+              {/* Card header */}
+              <div className="p-5 border-b border-slate-800/60">
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="text-2xl">{sec.icon}</span>
+                  <h3 className="text-base font-bold text-slate-100 flex-1">{sec.title}</h3>
+                  <span className={`text-sm font-bold ${cfg.textColor}`}>{sec.score}%</span>
+                  <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${cfg.badge}`}>{cfg.label}</span>
+                </div>
+                {/* Progress bar */}
+                <div className="h-2 rounded-full bg-slate-800 overflow-hidden">
+                  <div className={`h-full rounded-full transition-all duration-1000 ${cfg.barColor}`} style={{ width: `${sec.score}%` }} />
+                </div>
+              </div>
+
+              {/* Card body — 3 columns on desktop */}
+              <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-800/60">
+
+                {/* Column 1: What We Found */}
+                <div className="p-5">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">What We Found</p>
+                  {det.found}
+                </div>
+
+                {/* Column 2: Issues */}
+                <div className="p-5">
+                  <p className="text-xs font-bold text-red-400 uppercase tracking-wider mb-3">Issues Identified</p>
+                  <ul className="space-y-2">
+                    {det.issues.map((issue, i) => (
+                      <li key={i} className="flex items-start gap-2 text-xs text-slate-300 leading-relaxed">
+                        <span className="text-red-400 flex-shrink-0 mt-0.5 font-bold">•</span>
+                        {issue}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Column 3: How to Fix It */}
+                <div className="p-5">
+                  <p className="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-3">How to Fix It</p>
+                  <ol className="space-y-2">
+                    {det.fix.map((step, i) => (
+                      <li key={i} className="flex items-start gap-2 text-xs text-slate-300 leading-relaxed">
+                        <span className="text-emerald-400 flex-shrink-0 font-bold mt-0.5">{i + 1}.</span>
+                        {step}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
               </div>
             </div>
+          );
+        })}
 
-            {/* Strengths & suggestions */}
-            {((analysis.strengths || []).length > 0 || (analysis.suggestions || []).length > 0) && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {(analysis.strengths || []).length > 0 && (
-                  <div className="rounded-3xl border border-emerald-500/20 bg-slate-900/60 p-6">
-                    <h3 className="text-base font-bold text-emerald-400 mb-4 flex items-center gap-2">✓ Strengths</h3>
-                    <ul className="space-y-2">
-                      {analysis.strengths.map((s: string, i: number) => (
-                        <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
-                          <span className="text-emerald-400 flex-shrink-0 mt-0.5">•</span>{s}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {(analysis.suggestions || []).length > 0 && (
-                  <div className="rounded-3xl border border-amber-500/20 bg-slate-900/60 p-6">
-                    <h3 className="text-base font-bold text-amber-400 mb-4 flex items-center gap-2">⚠ Suggestions</h3>
-                    <ul className="space-y-2">
-                      {analysis.suggestions.map((s: string, i: number) => (
-                        <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
-                          <span className="text-amber-400 flex-shrink-0 mt-0.5">•</span>{s}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── KEYWORDS TAB ── */}
-        {activeSection === "keywords" && (
-          <KeywordAnalysis
-            matchedKeywords={analysis.matchedKeywords || []}
-            missingKeywords={analysis.missingKeywords || []}
-          />
-        )}
-
-        {/* ── IMPROVEMENTS TAB ── */}
-        {activeSection === "improve" && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-xl font-bold text-slate-50 mb-1">What to Add to Your Resume</h2>
-              <p className="text-sm text-slate-400 mb-5">
-                These are the specific changes that will have the biggest impact on your ATS score. Address High impact items first.
-              </p>
-              {improvements.length === 0 ? (
-                <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-8 text-center">
-                  <p className="text-3xl mb-3">🎉</p>
-                  <p className="text-emerald-400 font-bold text-lg">No major issues found!</p>
-                  <p className="text-slate-400 text-sm mt-2">Your resume is well-structured. Use AI enhancement to fine-tune it for this specific role.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {improvements.map((imp, i) => (
-                    <ImprovementCard key={i} {...imp} />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Missing keywords detail */}
-            {(analysis.missingKeywords || []).length > 0 && (
-              <div className="rounded-3xl border border-amber-500/20 bg-slate-900/60 p-6">
-                <h3 className="text-base font-bold text-amber-400 mb-3">⚠ Missing Keywords — Add These to Your Resume</h3>
-                <p className="text-xs text-slate-400 mb-4">
-                  These words appear in the job description but not in your resume. Adding them (where truthful) will directly boost your keyword match score.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {(analysis.missingKeywords || []).map((kw: string, i: number) => (
-                    <span key={i} className="bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs px-3 py-1.5 rounded-full font-medium">
-                      + {kw}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── RESUME TEMPLATE TAB ── */}
-        {activeSection === "resume" && (
-          <div className="space-y-5">
-
-            {/* ── View toggle (shown when enhanced data is available) ── */}
-            {enhancedData ? (
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-slate-700 bg-slate-900/60 p-4">
-                <div className="flex items-center gap-2 p-1 rounded-xl bg-slate-800 border border-slate-700">
-                  <button
-                    onClick={() => setResumeView("original")}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                      resumeView === "original"
-                        ? "bg-white text-slate-900 shadow"
-                        : "text-slate-400 hover:text-slate-200"
-                    }`}
-                  >
-                    📄 Original
-                  </button>
-                  <button
-                    onClick={() => setResumeView("enhanced")}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                      resumeView === "enhanced"
-                        ? "bg-emerald-500 text-white shadow shadow-emerald-500/30"
-                        : "text-slate-400 hover:text-slate-200"
-                    }`}
-                  >
-                    ✨ Enhanced Resume
-                  </button>
-                </div>
-
-                {resumeView === "enhanced" && (
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-slate-500">Score:</span>
-                    <span className="text-sm font-bold text-red-400">{score}</span>
-                    <span className="text-slate-600">→</span>
-                    <span className="text-sm font-bold text-emerald-400">{enhancedData?.atsScore ?? "~85"}</span>
-                    <span className="text-xs font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 rounded-full px-2 py-0.5">
-                      +{Math.max(0, (enhancedData?.atsScore ?? 85) - score)} pts
-                    </span>
-                  </div>
-                )}
-              </div>
-            ) : (
-              /* No enhanced data yet — show prompt banner */
-              <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-blue-300 mb-0.5">Your Resume — Original Data</p>
-                  <p className="text-xs text-slate-400">
-                    Extracted from your uploaded resume. Edit and download as PDF. For an AI-optimized version click{" "}
-                    <strong className="text-emerald-400">Enhance with AI</strong>.
-                  </p>
-                </div>
-                <button
-                  onClick={handleEnhance}
-                  className="flex-shrink-0 inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 transition-colors text-white text-xs font-bold px-4 py-2 rounded-full"
-                >
-                  ✨ Enhance with AI
-                </button>
-              </div>
-            )}
-
-            {/* ── AI enhancements list (when enhanced view is active) ── */}
-            {resumeView === "enhanced" && enhancedData?.enhancements?.length > 0 && (
-              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5">
-                <h3 className="text-sm font-bold text-emerald-400 mb-3">✨ AI Improvements Applied</h3>
-                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                  {enhancedData.enhancements.slice(0, 8).map((item: string, i: number) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
-                      <span className="text-emerald-400 flex-shrink-0 mt-0.5">✓</span>{item}
+        {/* ── STRENGTHS + SUGGESTIONS ── */}
+        {((analysis.strengths || []).length > 0 || (analysis.suggestions || []).length > 0) && (
+          <div className="fade-in-9 grid grid-cols-1 md:grid-cols-2 gap-6">
+            {(analysis.strengths || []).length > 0 && (
+              <div className="rounded-2xl border border-emerald-500/20 bg-slate-900/60 p-6">
+                <h3 className="text-base font-bold text-emerald-400 mb-4 flex items-center gap-2">
+                  <span>✓</span> Strengths
+                </h3>
+                <ul className="space-y-2.5">
+                  {(analysis.strengths as string[]).map((s, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-slate-300 leading-relaxed">
+                      <span className="text-emerald-400 flex-shrink-0 mt-0.5 font-bold">•</span>{s}
                     </li>
                   ))}
                 </ul>
               </div>
             )}
-
-            {/* ── Resume editor ── */}
-            <ProfessionalResumeEditor
-              key={resumeView}
-              initialData={resumeView === "enhanced" && enhancedData ? enhancedData : sd}
-              onSave={handleSaveResume}
-              resumeId={result?.resumeId}
-              isEnhanced={resumeView === "enhanced"}
-              originalScore={score}
-              enhancedScore={resumeView === "enhanced" ? (enhancedData?.atsScore ?? null) : null}
-            />
+            {(analysis.suggestions || []).length > 0 && (
+              <div className="rounded-2xl border border-amber-500/20 bg-slate-900/60 p-6">
+                <h3 className="text-base font-bold text-amber-400 mb-4 flex items-center gap-2">
+                  <span>⚠</span> AI Suggestions
+                </h3>
+                <ul className="space-y-2.5">
+                  {(analysis.suggestions as string[]).map((s, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-slate-300 leading-relaxed">
+                      <span className="text-amber-400 flex-shrink-0 mt-0.5 font-bold">•</span>{s}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         )}
 
-        {/* ── ACTION SECTION ── */}
-        <div className="rounded-3xl border border-slate-700 bg-gradient-to-br from-slate-900 to-slate-900/80 p-8 shadow-2xl">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-slate-50">What would you like to do next?</h2>
-            <p className="text-slate-400 text-sm mt-2">
-              Let AI apply all the improvements automatically, or upload a different resume.
+        {/* ── KEYWORD MATCH CARD ── */}
+        <div className="fade-in-10 rounded-2xl border border-slate-700 bg-slate-900/60 p-6 shadow-lg">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+            <div>
+              <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                <span>🔑</span> Keyword Match Analysis
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">How well your resume vocabulary aligns with the job description</p>
+            </div>
+            <div className={`inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-bold flex-shrink-0 ${
+              kwPct >= 70 ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+              : kwPct >= 45 ? "bg-amber-500/15 border-amber-500/30 text-amber-400"
+              : "bg-red-500/15 border-red-500/30 text-red-400"
+            }`}>
+              {kwPct}% Match
+            </div>
+          </div>
+
+          {/* Two columns: matched | missing */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
+            <div>
+              <p className="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-3">
+                Matched Keywords ({matchedKws.length})
+              </p>
+              {matchedKws.length === 0 ? (
+                <p className="text-xs text-slate-600">No matched keywords detected. Add a job description to enable keyword matching.</p>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {matchedKws.map((kw, i) => (
+                    <span key={i} className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs px-2.5 py-1 rounded-full font-medium">
+                      {kw}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div>
+              <p className="text-xs font-bold text-amber-400 uppercase tracking-wider mb-3">
+                Missing Keywords ({missingKws.length})
+              </p>
+              {missingKws.length === 0 ? (
+                <p className="text-xs text-emerald-400 font-semibold">All detected keywords are present!</p>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {missingKws.map((kw, i) => (
+                    <span key={i} className="bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs px-2.5 py-1 rounded-full font-medium">
+                      + {kw}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Strategy tip */}
+          <div className="rounded-xl border border-slate-800 bg-slate-950/50 px-4 py-3">
+            <p className="text-xs font-semibold text-slate-300 mb-1">Keyword Strategy</p>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Add the missing keywords naturally into your Skills section and Experience bullets. Use the exact spelling from the job description — ATS systems are often case-insensitive but spelling-sensitive. Avoid keyword stuffing; instead, work terms into meaningful sentences that describe your real experience.
             </p>
+          </div>
+        </div>
+
+        {/* ── KEY IMPROVEMENTS CARD ── */}
+        <div className="fade-in-11 rounded-2xl border border-slate-700 bg-slate-900/60 p-6 shadow-lg">
+          <h3 className="text-base font-bold text-slate-100 mb-1 flex items-center gap-2">
+            <span>⚡</span> Key Improvements
+          </h3>
+          <p className="text-xs text-slate-400 mb-5">Prioritised list of changes that will have the biggest impact on your ATS score. Address High impact items first.</p>
+
+          {improvements.length === 0 ? (
+            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-8 text-center">
+              <p className="text-3xl mb-3">🎉</p>
+              <p className="text-emerald-400 font-bold text-lg">No major issues found!</p>
+              <p className="text-slate-400 text-sm mt-2">Your resume is well-structured. Use AI enhancement to fine-tune it for this specific role.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {improvements.map((imp, i) => (
+                <ImprovementCard key={i} {...imp} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── ACTION CARDS ── */}
+        <div className="rounded-3xl border border-slate-700 bg-gradient-to-br from-slate-900 to-slate-900/80 p-8 shadow-2xl">
+          <div className="text-center mb-6">
+            <h2 className="text-xl font-bold text-slate-50">What would you like to do next?</h2>
+            <p className="text-slate-400 text-sm mt-1">Let AI apply all improvements automatically, or upload a different resume.</p>
           </div>
 
           {enhanceError && (
-            <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300 mb-6 text-center">⚠ {enhanceError}</div>
+            <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300 mb-5 text-center">⚠ {enhanceError}</div>
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Enhance with AI */}
             <button
-              onClick={handleEnhance}
+              onClick={requestEnhance}
               className="group flex flex-col items-center gap-3 rounded-2xl border-2 border-emerald-500/40 bg-emerald-500/5 p-7 text-center hover:border-emerald-400 hover:bg-emerald-500/10 transition-all duration-200 hover:shadow-lg hover:shadow-emerald-500/10"
             >
               <div className="w-14 h-14 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">✨</div>
@@ -780,6 +1135,7 @@ export default function AtsScorePage() {
               </span>
             </button>
 
+            {/* Upload new */}
             <button
               onClick={() => { window.localStorage.removeItem("atsAnalyzeResult"); router.push("/upload"); }}
               className="group flex flex-col items-center gap-3 rounded-2xl border-2 border-slate-700 bg-slate-900/40 p-7 text-center hover:border-slate-600 hover:bg-slate-800/40 transition-all duration-200"
@@ -798,6 +1154,98 @@ export default function AtsScorePage() {
           </div>
         </div>
 
+        {/* ── RESUME TEMPLATE (collapsible) ── */}
+        <div className="rounded-2xl border border-slate-700 bg-slate-900/60 overflow-hidden">
+          <button
+            onClick={() => setShowResumeTemplate(o => !o)}
+            className="w-full flex items-center justify-between px-6 py-4 text-sm font-semibold text-slate-300 hover:text-slate-100 hover:bg-slate-800/40 transition-all"
+          >
+            <span>📄 View / Edit Resume Template</span>
+            <span className="text-slate-500">{showResumeTemplate ? "▲ Collapse" : "▼ Expand"}</span>
+          </button>
+
+          {showResumeTemplate && (
+            <div className="border-t border-slate-800 p-5 space-y-5">
+              {/* View toggle when enhanced data available */}
+              {enhancedData ? (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-slate-700 bg-slate-900/60 p-4">
+                  <div className="flex items-center gap-2 p-1 rounded-xl bg-slate-800 border border-slate-700">
+                    <button
+                      onClick={() => setResumeView("original")}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                        resumeView === "original" ? "bg-white text-slate-900 shadow" : "text-slate-400 hover:text-slate-200"
+                      }`}
+                    >
+                      📄 Original
+                    </button>
+                    <button
+                      onClick={() => setResumeView("enhanced")}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                        resumeView === "enhanced" ? "bg-emerald-500 text-white shadow shadow-emerald-500/30" : "text-slate-400 hover:text-slate-200"
+                      }`}
+                    >
+                      ✨ Enhanced Resume
+                    </button>
+                  </div>
+                  {resumeView === "enhanced" && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-slate-500">Score:</span>
+                      <span className="text-sm font-bold text-red-400">{score}</span>
+                      <span className="text-slate-600">→</span>
+                      <span className="text-sm font-bold text-emerald-400">{enhancedData?.atsScore ?? "~85"}</span>
+                      <span className="text-xs font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 rounded-full px-2 py-0.5">
+                        +{Math.max(0, (enhancedData?.atsScore ?? 85) - score)} pts
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-blue-300 mb-0.5">Your Resume — Original Data</p>
+                    <p className="text-xs text-slate-400">
+                      Extracted from your uploaded resume. Edit and download as PDF. For an AI-optimized version click{" "}
+                      <strong className="text-emerald-400">Enhance with AI</strong>.
+                    </p>
+                  </div>
+                  <button
+                    onClick={requestEnhance}
+                    className="flex-shrink-0 inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 transition-colors text-white text-xs font-bold px-4 py-2 rounded-full"
+                  >
+                    ✨ Enhance with AI
+                  </button>
+                </div>
+              )}
+
+              {/* AI enhancements list */}
+              {resumeView === "enhanced" && enhancedData?.enhancements?.length > 0 && (
+                <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5">
+                  <h3 className="text-sm font-bold text-emerald-400 mb-3">✨ AI Improvements Applied</h3>
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {(enhancedData.enhancements as string[]).slice(0, 8).map((item, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
+                        <span className="text-emerald-400 flex-shrink-0 mt-0.5">✓</span>{item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Resume editor */}
+              <ProfessionalResumeEditor
+                key={resumeView}
+                initialData={resumeView === "enhanced" && enhancedData ? enhancedData : sd}
+                onSave={handleSaveResume}
+                resumeId={result?.resumeId}
+                isEnhanced={resumeView === "enhanced"}
+                originalScore={score}
+                enhancedScore={resumeView === "enhanced" ? (enhancedData?.atsScore ?? null) : null}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* ── VIEW HISTORY ── */}
         <div className="flex justify-center">
           <button
             onClick={() => router.push(`/history?email=${encodeURIComponent(sd.email || "")}`)}
@@ -807,6 +1255,95 @@ export default function AtsScorePage() {
           </button>
         </div>
       </div>
+
+      {/* ── JOB DESCRIPTION MODAL ── */}
+      {showJdModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={e => { if (e.target === e.currentTarget) setShowJdModal(false); }}
+        >
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" />
+
+          {/* Panel */}
+          <div className="modal-in relative w-full max-w-lg rounded-3xl border border-slate-700/60 bg-slate-900 shadow-2xl shadow-black/70 overflow-hidden">
+
+            {/* Header */}
+            <div className="flex items-start justify-between gap-4 px-7 pt-7 pb-5 border-b border-slate-800">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xl">✨</span>
+                  <h2 className="text-lg font-bold text-white">Enhance Resume with AI</h2>
+                </div>
+                <p className="text-sm text-slate-400 leading-relaxed">
+                  Paste the job description so AI can tailor your resume with the exact keywords and
+                  requirements the employer is looking for.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowJdModal(false)}
+                className="shrink-0 mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 transition-all"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="px-7 py-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-200 mb-2">
+                  Job Description
+                  <span className="ml-2 text-xs font-normal text-slate-500">paste the full job posting</span>
+                </label>
+                <textarea
+                  value={jobDescInput}
+                  onChange={e => setJobDescInput(e.target.value)}
+                  rows={8}
+                  autoFocus
+                  placeholder="Paste the job description here — AI will use it to inject the right keywords, rewrite your summary, and tailor your experience bullets to this specific role…"
+                  className="w-full rounded-xl border border-slate-700/80 bg-slate-950/60 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all resize-none"
+                />
+                <p className="text-xs text-slate-600 mt-2">
+                  Tip: a detailed job description produces significantly better keyword injection and a higher ATS score.
+                </p>
+              </div>
+
+              {/* What AI will do */}
+              <div className="rounded-xl border border-slate-800 bg-slate-950/50 px-4 py-3">
+                <p className="text-xs font-semibold text-slate-400 mb-2">AI will automatically:</p>
+                <ul className="space-y-1">
+                  {[
+                    "Inject missing keywords from the job description",
+                    "Rewrite your professional summary for this role",
+                    "Strengthen experience bullets with action verbs & metrics",
+                    "Align your skills section with required technologies",
+                  ].map(item => (
+                    <li key={item} className="flex items-center gap-2 text-xs text-slate-400">
+                      <span className="text-emerald-400 shrink-0">✓</span>{item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center gap-3 px-7 pb-7">
+              <button
+                onClick={() => handleEnhance(jobDescInput)}
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-[.98] transition-all text-white text-sm font-bold px-6 py-3.5 shadow-lg shadow-emerald-500/25"
+              >
+                ✨ Enhance My Resume →
+              </button>
+              <button
+                onClick={() => setShowJdModal(false)}
+                className="px-5 py-3.5 rounded-xl border border-slate-700 hover:border-slate-600 text-slate-400 hover:text-white text-sm transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

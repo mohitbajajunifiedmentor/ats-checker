@@ -43,7 +43,7 @@ export async function POST(req) {
       resume: updatedResume
     });
 
-  } catch (error) {
+  } catch (error) { 
     console.error("Update Resume Error:", error);
     return NextResponse.json(
       { error: "Failed to update resume data" },
