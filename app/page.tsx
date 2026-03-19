@@ -367,95 +367,73 @@ export default function Home() {
       </nav>
 
       {/* ════════════════════ HERO ════════════════════ */}
-      <section className="relative z-10 max-w-7xl mx-auto px-5 sm:px-8 pt-20 pb-28 overflow-hidden">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 xl:gap-20 items-center">
+      <section className="relative z-10 max-w-7xl mx-auto px-5 sm:px-8 pt-16 pb-24 overflow-hidden">
 
-          {/* Left: Copy */}
-          <div className="space-y-8" style={{ opacity:mounted?1:0, transform:mounted?"translateY(0)":"translateY(32px)", transition:"opacity .8s ease, transform .8s ease" }}>
+        {/* ── Top: Centered copy ── */}
+        <div className="text-center max-w-3xl mx-auto mb-14"
+          style={{ opacity:mounted?1:0, transform:mounted?"translateY(0)":"translateY(28px)", transition:"opacity .8s ease, transform .8s ease" }}>
 
-            {/* Badge */}
-            <div className="inline-flex items-center gap-2.5 rounded-full border border-emerald-500/30 bg-emerald-500/8 px-4 py-2 text-xs font-semibold text-emerald-300 backdrop-blur-sm">
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"/>
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400"/>
-              </span>
-              Powered by GPT-4o · Trusted by 50,000+ job seekers
-            </div>
-
-            {/* Headline */}
-            <div>
-              <h1 className="text-5xl sm:text-6xl xl:text-[68px] font-extrabold tracking-tight leading-[1.03] text-white">
-                Your Resume.
-                <br/>
-                <span className="shimmer-text">Fully Optimized.</span>
-              </h1>
-              <p className="mt-6 text-xl text-slate-400 leading-relaxed max-w-[520px]">
-                75% of resumes are rejected before a human ever reads them.
-                Upload yours and discover exactly why — then fix it in minutes with AI.
-              </p>
-            </div>
-
-            {/* Feature pills */}
-            <div className="flex flex-wrap gap-2">
-              {[
-                {icon:"⚡", label:"Instant Score"},
-                {icon:"🔑", label:"Keyword Analysis"},
-                {icon:"🤖", label:"AI Rewrite"},
-                {icon:"✏️", label:"Editable Template"},
-                {icon:"📁", label:"Resume History"},
-              ].map(({ icon, label }) => (
-                <div key={label} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/70 border border-slate-800 text-xs text-slate-400 font-medium">
-                  <span>{icon}</span><span>{label}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Social proof numbers */}
-            <div className="flex flex-wrap items-center gap-6 pt-2">
-              <div>
-                <p className="text-2xl font-black text-white">50K+</p>
-                <p className="text-xs text-slate-500 mt-0.5">Resumes analyzed</p>
-              </div>
-              <div className="w-px h-10 bg-slate-800"/>
-              <div>
-                <p className="text-2xl font-black text-emerald-400">+40%</p>
-                <p className="text-xs text-slate-500 mt-0.5">Avg. score boost</p>
-              </div>
-              <div className="w-px h-10 bg-slate-800"/>
-              <div>
-                <p className="text-2xl font-black text-white">98%</p>
-                <p className="text-xs text-slate-500 mt-0.5">User satisfaction</p>
-              </div>
-            </div>
-
-            {/* Floating mock card (desktop) */}
-            <div className="anim-float hidden xl:block px-6 py-4" style={{ opacity:mounted?1:0, transition:"opacity .8s ease .5s" }}>
-              <MockScoreCard/>
-            </div>
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2.5 rounded-full border border-emerald-500/30 bg-emerald-500/8 px-4 py-2 text-xs font-semibold text-emerald-300 backdrop-blur-sm mb-7">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"/>
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400"/>
+            </span>
+            Powered by GPT-4o · Free · No account needed
           </div>
 
-          {/* Right: Upload panel */}
-          <div ref={uploadCardRef}
+          {/* Headline */}
+          <h1 className="text-5xl sm:text-6xl xl:text-7xl font-extrabold tracking-tight leading-[1.06] text-white mb-5">
+            Your Resume.<br/>
+            <span className="shimmer-text">Fully Optimized.</span>
+          </h1>
+
+          {/* Sub-headline */}
+          <p className="text-xl text-slate-400 leading-relaxed max-w-2xl mx-auto mb-8">
+            75% of resumes are rejected before a human ever reads them. Upload yours —
+            AI scores it, finds every keyword gap, and rewrites it to pass any ATS in under 30 seconds.
+          </p>
+
+          {/* Feature pills row */}
+          <div className="flex flex-wrap justify-center gap-2">
+            {[
+              {icon:"⚡",label:"Instant Score"},
+              {icon:"🔑",label:"Keyword Analysis"},
+              {icon:"🤖",label:"AI Rewrite"},
+              {icon:"✏️",label:"Editable Template"},
+              {icon:"📁",label:"Resume History"},
+              {icon:"🔒",label:"Secure & Private"},
+            ].map(({icon,label}) => (
+              <div key={label} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/70 border border-slate-800 text-xs text-slate-400 font-medium hover:border-slate-700 hover:text-slate-300 transition-colors">
+                <span>{icon}</span><span>{label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Main cards: Upload + Score preview side by side ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-stretch">
+
+          {/* Upload column (wider) */}
+          <div className="lg:col-span-3" ref={uploadCardRef}
             style={{
               opacity: mounted ? 1 : 0,
-              transition: exiting
-                ? "opacity .6s ease, transform .6s ease"
-                : "opacity .8s ease .3s",
-              ...(exiting ? { opacity: 0, transform: "translateY(-40px) scale(0.96)" } : {}),
+              transition: exiting ? "opacity .6s ease, transform .6s ease" : "opacity .8s ease .25s",
+              ...(exiting ? { opacity:0, transform:"translateY(-36px) scale(0.97)" } : {}),
             }}>
 
-            {/* ── UPLOADING: Progress ring ── */}
+            {/* ── UPLOADING STATE ── */}
             {phase === "uploading" && uploadFile && (
-              <div className="glass-card rounded-3xl border border-slate-700/50 p-8 shadow-2xl shadow-black/60 scale-in">
-                <div className="text-center mb-6">
-                  <h2 className="text-xl font-bold text-white">Uploading Resume</h2>
-                  <p className="text-sm text-slate-400 mt-1">Securely transmitting to our servers…</p>
+              <div className="h-full glass-card rounded-3xl border border-slate-700/50 p-10 shadow-2xl shadow-black/60 scale-in flex flex-col items-center justify-center gap-7">
+                <div className="text-center">
+                  <h2 className="text-2xl font-bold text-white">Uploading Resume</h2>
+                  <p className="text-sm text-slate-400 mt-2">Securely transmitting to our servers…</p>
                 </div>
                 {(() => {
-                  const sz = 168, r = 65, circ = 2 * Math.PI * r;
+                  const sz = 160, r = 62, circ = 2 * Math.PI * r;
                   const done = uploadProg >= 100;
                   return (
-                    <div className="flex flex-col items-center gap-7">
+                    <>
                       <div className="relative" style={{ width:sz, height:sz }}>
                         <div className="absolute inset-0 rounded-full" style={{ boxShadow:`0 0 ${done?60:35}px rgba(16,185,129,${done?.55:.22})`, transition:"box-shadow .7s ease" }}/>
                         <div className="absolute inset-[-6px] rounded-full opacity-30"
@@ -467,24 +445,18 @@ export default function Home() {
                             style={{ filter:"drop-shadow(0 0 10px rgba(16,185,129,.65))", transition:"stroke-dashoffset .08s linear" }}/>
                         </svg>
                         <div className="absolute inset-0 flex flex-col items-center justify-center">
-                          {done ? (
-                            <span className="text-5xl" style={{ animation:"checkPop .5s cubic-bezier(.34,1.56,.64,1) both" }}>✅</span>
-                          ) : (
-                            <>
-                              <span className="text-3xl font-black text-emerald-400 tabular-nums">{Math.round(uploadProg)}%</span>
-                              <span className="text-xs text-slate-500 mt-1 font-medium">uploading</span>
-                            </>
-                          )}
+                          {done
+                            ? <span className="text-5xl" style={{ animation:"checkPop .5s cubic-bezier(.34,1.56,.64,1) both" }}>✅</span>
+                            : <><span className="text-3xl font-black text-emerald-400 tabular-nums">{Math.round(uploadProg)}%</span><span className="text-xs text-slate-500 mt-1">uploading</span></>
+                          }
                         </div>
                       </div>
-                      <div className="text-center">
+                      <div className="text-center w-full max-w-xs">
                         <div className="flex items-center gap-2 justify-center mb-1.5">
                           <span className="text-xl">📄</span>
-                          <p className="text-sm font-semibold text-slate-200 max-w-[230px] truncate">{uploadFile.name}</p>
+                          <p className="text-sm font-semibold text-slate-200 max-w-[220px] truncate">{uploadFile.name}</p>
                         </div>
-                        <p className="text-xs text-slate-500">{(uploadFile.size/1024/1024).toFixed(2)} MB · PDF</p>
-                      </div>
-                      <div className="w-full">
+                        <p className="text-xs text-slate-500 mb-4">{(uploadFile.size/1024/1024).toFixed(2)} MB · PDF</p>
                         <div className="flex justify-between text-xs mb-2">
                           <span className={uploadProg>=100?"text-emerald-400":"text-slate-500"}>{uploadProg>=100?"Upload complete!":"Uploading resume…"}</span>
                           <span className="text-emerald-400 font-bold tabular-nums">{Math.round(uploadProg)}%</span>
@@ -493,97 +465,83 @@ export default function Home() {
                           <div className="h-full rounded-full" style={{ width:`${uploadProg}%`, background:"linear-gradient(90deg,#10b981,#14b8a6,#34d399)", boxShadow:"0 0 12px rgba(16,185,129,.55)", transition:"width .08s linear" }}/>
                         </div>
                         {uploadProg >= 100 && (
-                          <p className="text-xs text-emerald-400 text-center mt-2.5 font-medium" style={{ animation:"fadeUp .4s ease both" }}>
-                            Starting AI analysis…
-                          </p>
+                          <p className="text-xs text-emerald-400 text-center mt-3 font-medium" style={{ animation:"fadeUp .4s ease both" }}>Starting AI analysis…</p>
                         )}
                       </div>
-                    </div>
+                    </>
                   );
                 })()}
               </div>
             )}
 
-            {/* ── IDLE: Drop zone ── */}
+            {/* ── IDLE STATE ── */}
             {phase === "idle" && (
-            <div className="glass-card rounded-3xl border border-slate-700/50 shadow-2xl shadow-black/60 glow-em overflow-hidden scale-in">
-                {/* Header */}
-                <div className="px-7 pt-7 pb-5 border-b border-slate-800/60">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 rounded-full px-3 py-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"/>
-                      Free · Instant · No account needed
-                    </div>
-                    <div className="flex gap-1.5">
-                      {["bg-red-500","bg-amber-500","bg-emerald-500"].map(c => <div key={c} className={`w-2.5 h-2.5 rounded-full ${c} opacity-60`}/>)}
+              <div className="glass-card rounded-3xl border border-slate-700/50 shadow-2xl shadow-black/60 glow-em overflow-hidden scale-in">
+
+                {/* Card top bar */}
+                <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-slate-800/60">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center text-sm"
+                      style={{ background:"linear-gradient(135deg,rgba(16,185,129,.2),rgba(13,148,136,.15))", border:"1px solid rgba(16,185,129,.3)" }}>📄</div>
+                    <div>
+                      <p className="text-sm font-bold text-white leading-tight">Resume Analyzer</p>
+                      <p className="text-[10px] text-emerald-400 font-medium">● Live · GPT-4o powered</p>
                     </div>
                   </div>
-                  <h2 className="text-2xl font-bold text-white">Upload Your Resume</h2>
-                  <p className="text-sm text-slate-400 mt-1">Drop your PDF — analysis starts automatically</p>
+                  <div className="flex gap-1.5">
+                    {["bg-red-500","bg-amber-400","bg-emerald-500"].map(c=><div key={c} className={`w-2.5 h-2.5 rounded-full ${c} opacity-70`}/>)}
+                  </div>
                 </div>
 
                 {/* Drop zone */}
-                <div className="p-7">
+                <div className="p-6">
                   <label
                     className={`relative flex flex-col items-center justify-center w-full rounded-2xl border-2 border-dashed cursor-pointer transition-all duration-300 overflow-hidden ${
                       dragOver
-                        ? "border-emerald-400 bg-emerald-500/10 shadow-[inset_0_0_60px_rgba(16,185,129,.06)]"
-                        : "border-slate-700/80 bg-slate-900/30 hover:border-emerald-500/50 hover:bg-emerald-500/4"
+                        ? "border-emerald-400 bg-emerald-500/10 shadow-[inset_0_0_60px_rgba(16,185,129,.07)]"
+                        : "border-slate-700/70 bg-slate-950/40 hover:border-emerald-500/50 hover:bg-emerald-500/5"
                     }`}
-                    style={{ minHeight:280 }}
-                    onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-                    onDragLeave={() => setDragOver(false)}
-                    onDrop={e => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) startUpload(f); }}>
+                    style={{ minHeight:240 }}
+                    onDragOver={e=>{ e.preventDefault(); setDragOver(true); }}
+                    onDragLeave={()=>setDragOver(false)}
+                    onDrop={e=>{ e.preventDefault(); setDragOver(false); const f=e.dataTransfer.files[0]; if(f) startUpload(f); }}>
                     <input type="file" accept="application/pdf" className="hidden"
-                      onChange={e => { const f = e.target.files?.[0]; if (f) startUpload(f); }}/>
+                      onChange={e=>{ const f=e.target.files?.[0]; if(f) startUpload(f); }}/>
 
-                    {/* Animated corner accents */}
+                    {/* Corner accents on drag */}
                     {dragOver && (
-                      <>
-                        {[["top-2 left-2","border-t-2 border-l-2"],["top-2 right-2","border-t-2 border-r-2"],["bottom-2 left-2","border-b-2 border-l-2"],["bottom-2 right-2","border-b-2 border-r-2"]].map(([pos, b]) => (
-                          <div key={pos} className={`absolute ${pos} ${b} w-5 h-5 border-emerald-400 rounded-sm`}/>
-                        ))}
-                      </>
+                      <>{[["top-2 left-2","border-t-2 border-l-2"],["top-2 right-2","border-t-2 border-r-2"],["bottom-2 left-2","border-b-2 border-l-2"],["bottom-2 right-2","border-b-2 border-r-2"]].map(([pos,b])=>(
+                        <div key={pos} className={`absolute ${pos} ${b} w-5 h-5 border-emerald-400 rounded-sm`}/>
+                      ))}</>
                     )}
 
-                    <div className="flex flex-col items-center gap-6 py-12 px-8 text-center select-none">
-                      {/* Icon */}
-                      <div className="relative" style={{ width:84, height:84 }}>
-                        <div className="absolute inset-0 rounded-2xl"
-                          style={{ background: dragOver?"rgba(16,185,129,.18)":"rgba(15,23,42,.9)", border:`2px solid ${dragOver?"rgba(16,185,129,.5)":"rgba(51,65,85,.5)"}`, animation:dragOver?"uploadGlow 1s ease-in-out infinite":"none", transition:"all .3s ease" }}/>
+                    <div className="flex flex-col items-center gap-5 py-10 px-8 text-center select-none">
+                      {/* Icon box */}
+                      <div className="relative" style={{ width:76, height:76 }}>
+                        <div className="absolute inset-0 rounded-2xl transition-all duration-300"
+                          style={{ background:dragOver?"rgba(16,185,129,.18)":"rgba(15,23,42,.85)", border:`2px solid ${dragOver?"rgba(16,185,129,.55)":"rgba(51,65,85,.45)"}`, animation:dragOver?"uploadGlow 1s ease-in-out infinite":"none" }}/>
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <span className="text-4xl" style={{ animation:dragOver?"uploadPulse .8s ease-in-out infinite":"none" }}>
-                            {dragOver ? "📂" : "📄"}
-                          </span>
+                          <span className="text-3xl" style={{ animation:dragOver?"uploadPulse .8s ease-in-out infinite":"none" }}>{dragOver?"📂":"📄"}</span>
                         </div>
-                        {dragOver && [
-                          { top:"2px", right:"2px", size:"8px", color:"#34d399", delay:"0s" },
-                          { top:"14px", left:"4px", size:"6px", color:"#14b8a6", delay:".3s" },
-                          { bottom:"4px", right:"10px", size:"5px", color:"#6ee7b7", delay:".6s" },
-                        ].map((p, i) => (
-                          <span key={i} className="absolute rounded-full"
-                            style={{ top:p.top, right:p.right, bottom:p.bottom, left:p.left, width:p.size, height:p.size, background:p.color, animation:`particleUp 1s ease-out ${p.delay} infinite` }}/>
+                        {dragOver && [{top:"2px",right:"2px",size:"8px",color:"#34d399",delay:"0s"},{top:"14px",left:"4px",size:"6px",color:"#14b8a6",delay:".3s"},{bottom:"4px",right:"10px",size:"5px",color:"#6ee7b7",delay:".6s"}].map((p,i)=>(
+                          <span key={i} className="absolute rounded-full" style={{ top:p.top,right:p.right,bottom:p.bottom,left:p.left,width:p.size,height:p.size,background:p.color,animation:`particleUp 1s ease-out ${p.delay} infinite` }}/>
                         ))}
                       </div>
 
-                      {/* Text */}
                       <div>
-                        <p className="text-lg font-semibold text-slate-200 mb-2">
-                          {dragOver ? "Release to analyze" : "Drag & drop your resume"}
+                        <p className="text-lg font-semibold text-slate-200 mb-1.5">
+                          {dragOver ? "Release to analyze" : "Drop your resume here"}
                         </p>
-                        <p className="text-sm text-slate-500">
-                          or <span className="text-emerald-400 font-semibold underline underline-offset-2 decoration-dotted cursor-pointer">click to browse files</span>
-                        </p>
-                        <p className="text-xs text-slate-600 mt-4">PDF only · max 5 MB · starts automatically</p>
+                        <p className="text-sm text-slate-500">or <span className="text-emerald-400 font-semibold underline underline-offset-2 decoration-dotted">click to browse</span></p>
+                        <p className="text-xs text-slate-600 mt-3">PDF only · max 5 MB · analysis starts instantly</p>
                       </div>
 
-                      {/* Format badge */}
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-slate-800/70 border border-slate-700/60">
-                          <span className="w-4 h-4 rounded flex items-center justify-center text-white text-[9px] font-black" style={{ background:"#dc2626" }}>PDF</span>
-                          <span className="text-xs text-slate-500">Supported format</span>
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800/60 border border-slate-700/50">
+                          <span className="w-3.5 h-3.5 rounded flex items-center justify-center text-white text-[8px] font-black" style={{ background:"#dc2626" }}>PDF</span>
+                          <span className="text-xs text-slate-500">Supported</span>
                         </div>
-                        <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-slate-800/70 border border-slate-700/60">
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800/60 border border-slate-700/50">
                           <span className="text-emerald-400 text-xs">🔒</span>
                           <span className="text-xs text-slate-500">Encrypted</span>
                         </div>
@@ -591,22 +549,66 @@ export default function Home() {
                     </div>
                   </label>
 
-                  {/* Error */}
                   {error && (
                     <div className="mt-4 rounded-xl border border-red-500/35 bg-red-500/8 px-4 py-3 text-sm text-red-300 flex items-start gap-2.5">
-                      <span className="shrink-0 mt-0.5 text-red-400">⚠</span>
-                      <span>{error}</span>
+                      <span className="shrink-0 mt-0.5 text-red-400">⚠</span><span>{error}</span>
                     </div>
                   )}
+                </div>
 
-                  <p className="text-xs text-center text-slate-600 mt-5">
-                    Your data is analyzed securely · email in resume = your identity · no login needed
-                  </p>
+                {/* Bottom: what you get */}
+                <div className="px-6 pb-6 pt-0 grid grid-cols-2 gap-2">
+                  {[
+                    {icon:"🎯",label:"ATS Score 0–100"},
+                    {icon:"🔑",label:"Keyword Gaps"},
+                    {icon:"📊",label:"Section Breakdown"},
+                    {icon:"✨",label:"AI Resume Rewrite"},
+                  ].map(({icon,label})=>(
+                    <div key={label} className="flex items-center gap-2 rounded-xl border border-slate-800/70 bg-slate-900/40 px-3 py-2 text-xs text-slate-400">
+                      <span>{icon}</span><span>{label}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Footer trust line */}
+                <div className="border-t border-slate-800/50 px-6 py-3.5 flex items-center justify-between">
+                  <p className="text-xs text-slate-600">No login · Your email = your identity</p>
+                  <div className="flex items-center gap-1.5 text-xs text-emerald-500/60 font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/60 animate-pulse"/>
+                    Free forever
+                  </div>
                 </div>
               </div>
             )}
           </div>
+
+          {/* Score preview column */}
+          <div className="lg:col-span-2 flex flex-col gap-5"
+            style={{ opacity:mounted?1:0, transition:"opacity .8s ease .45s" }}>
+
+            {/* Label */}
+            <div className="flex items-center gap-2.5">
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-widest whitespace-nowrap">Your report preview</span>
+              <div className="flex-1 h-px bg-gradient-to-r from-slate-800 to-transparent"/>
+            </div>
+
+            {/* Mock score card with float animation */}
+            <div className="anim-float flex-1">
+              <MockScoreCard/>
+            </div>
+
+            {/* Mini testimonial */}
+            <div className="glass-card rounded-2xl border border-slate-700/50 px-4 py-3.5 flex items-start gap-3">
+              <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-xs font-bold text-white" style={{ background:"linear-gradient(135deg,#10b981,#0d9488)" }}>PS</div>
+              <div>
+                <p className="text-xs text-slate-300 leading-relaxed">&ldquo;Went from 44 → 88 in one session. Three interviews in two weeks.&rdquo;</p>
+                <p className="text-[10px] text-slate-600 mt-1 font-medium">Priya S. · Software Engineer @ Google</p>
+              </div>
+            </div>
+          </div>
         </div>
+
+       
       </section>
 
       {/* ════════════════════ STATS TICKER ════════════════════ */}

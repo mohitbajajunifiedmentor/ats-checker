@@ -282,6 +282,7 @@ export default function AtsScorePage() {
   const [scanProgress, setScanProgress] = useState(0);
   const apiResultRef = useRef<any>(null);
   const phaseRef = useRef(phase);
+  const initDoneRef = useRef(false);
   phaseRef.current = phase;
 
   /* Job description modal state */
@@ -337,6 +338,10 @@ export default function AtsScorePage() {
   }, [phase]);
 
   useEffect(() => {
+    /* Guard against React Strict Mode double-invocation */
+    if (initDoneRef.current) return;
+    initDoneRef.current = true;
+
     /* Check for a pending upload started on the home page */
     const pendingFile    = uploadStore.getPendingFile();
     const pendingPromise = uploadStore.getPendingPromise();
@@ -1154,75 +1159,102 @@ export default function AtsScorePage() {
           </div>
         </div>
 
-        {/* ── RESUME TEMPLATE (collapsible) ── */}
-        <div className="rounded-2xl border border-slate-700 bg-slate-900/60 overflow-hidden">
-          <button
-            onClick={() => setShowResumeTemplate(o => !o)}
-            className="w-full flex items-center justify-between px-6 py-4 text-sm font-semibold text-slate-300 hover:text-slate-100 hover:bg-slate-800/40 transition-all"
-          >
-            <span>📄 View / Edit Resume Template</span>
-            <span className="text-slate-500">{showResumeTemplate ? "▲ Collapse" : "▼ Expand"}</span>
-          </button>
+        {/* ── RESUME TEMPLATE (full-screen trigger) ── */}
+        <button
+          onClick={() => setShowResumeTemplate(o => !o)}
+          className="w-full flex items-center justify-between rounded-2xl border border-slate-700 bg-slate-900/60 px-6 py-4 text-sm font-semibold text-slate-300 hover:text-slate-100 hover:bg-slate-800/50 hover:border-slate-600 transition-all"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-base">📄</span>
+            <div className="text-left">
+              <p className="font-semibold text-slate-200">View / Edit Resume</p>
+              <p className="text-xs text-slate-500 font-normal mt-0.5">Full-page editor · download as PDF</p>
+            </div>
+          </div>
+          <span className="text-xs text-slate-500 border border-slate-700 rounded-lg px-3 py-1.5">Open →</span>
+        </button>
 
-          {showResumeTemplate && (
-            <div className="border-t border-slate-800 p-5 space-y-5">
-              {/* View toggle when enhanced data available */}
-              {enhancedData ? (
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-slate-700 bg-slate-900/60 p-4">
-                  <div className="flex items-center gap-2 p-1 rounded-xl bg-slate-800 border border-slate-700">
-                    <button
-                      onClick={() => setResumeView("original")}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                        resumeView === "original" ? "bg-white text-slate-900 shadow" : "text-slate-400 hover:text-slate-200"
-                      }`}
-                    >
-                      📄 Original
-                    </button>
-                    <button
-                      onClick={() => setResumeView("enhanced")}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                        resumeView === "enhanced" ? "bg-emerald-500 text-white shadow shadow-emerald-500/30" : "text-slate-400 hover:text-slate-200"
-                      }`}
-                    >
-                      ✨ Enhanced Resume
-                    </button>
+        {/* ── FULL-SCREEN RESUME OVERLAY ── */}
+        {showResumeTemplate && (
+          <div className="fixed inset-0 z-50 bg-[#0a0f1e] overflow-y-auto">
+
+            {/* Sticky top bar */}
+            <div className="sticky top-0 z-10 border-b border-slate-800/80 bg-slate-950/95 backdrop-blur-xl">
+              <div className="max-w-6xl mx-auto px-5 sm:px-8 h-14 flex items-center justify-between gap-4">
+
+                {/* Left: title + view toggle */}
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-sm">📄</span>
+                    <span className="text-sm font-bold text-slate-200 hidden sm:block">Resume</span>
                   </div>
-                  {resumeView === "enhanced" && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-slate-500">Score:</span>
-                      <span className="text-sm font-bold text-red-400">{score}</span>
+
+                  {enhancedData && (
+                    <div className="flex items-center gap-1 p-0.5 rounded-lg bg-slate-800 border border-slate-700">
+                      <button
+                        onClick={() => setResumeView("original")}
+                        className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                          resumeView === "original" ? "bg-white text-slate-900 shadow" : "text-slate-400 hover:text-slate-200"
+                        }`}
+                      >
+                        Original
+                      </button>
+                      <button
+                        onClick={() => setResumeView("enhanced")}
+                        className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                          resumeView === "enhanced" ? "bg-emerald-500 text-white shadow shadow-emerald-500/30" : "text-slate-400 hover:text-slate-200"
+                        }`}
+                      >
+                        ✨ Enhanced
+                      </button>
+                    </div>
+                  )}
+
+                  {resumeView === "enhanced" && enhancedData && (
+                    <div className="hidden sm:flex items-center gap-2 text-xs">
+                      <span className="text-red-400 font-bold">{score}</span>
                       <span className="text-slate-600">→</span>
-                      <span className="text-sm font-bold text-emerald-400">{enhancedData?.atsScore ?? "~85"}</span>
-                      <span className="text-xs font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 rounded-full px-2 py-0.5">
+                      <span className="text-emerald-400 font-bold">{enhancedData?.atsScore ?? "~85"}</span>
+                      <span className="text-emerald-400 font-bold bg-emerald-500/15 border border-emerald-500/30 rounded-full px-2 py-0.5">
                         +{Math.max(0, (enhancedData?.atsScore ?? 85) - score)} pts
                       </span>
                     </div>
                   )}
                 </div>
-              ) : (
-                <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+
+                {/* Right: close */}
+                <button
+                  onClick={() => setShowResumeTemplate(false)}
+                  className="shrink-0 flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-white border border-slate-700 hover:border-slate-500 rounded-lg px-3 py-1.5 transition-all"
+                >
+                  ✕ Close
+                </button>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="max-w-6xl mx-auto px-5 sm:px-8 py-8 space-y-6">
+
+              {/* Info banner when no enhanced data */}
+              {!enhancedData && (
+                <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
                   <div className="flex-1">
-                    <p className="text-sm font-semibold text-blue-300 mb-0.5">Your Resume — Original Data</p>
-                    <p className="text-xs text-slate-400">
-                      Extracted from your uploaded resume. Edit and download as PDF. For an AI-optimized version click{" "}
-                      <strong className="text-emerald-400">Enhance with AI</strong>.
+                    <p className="text-sm font-semibold text-blue-300 mb-0.5">Original Resume Data</p>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      Extracted from your PDF. Edit any field inline, then download as PDF.
+                      Want an AI-optimized version?{" "}
+                      <button onClick={() => { setShowResumeTemplate(false); requestEnhance(); }} className="text-emerald-400 font-semibold underline underline-offset-2">Enhance with AI →</button>
                     </p>
                   </div>
-                  <button
-                    onClick={requestEnhance}
-                    className="flex-shrink-0 inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 transition-colors text-white text-xs font-bold px-4 py-2 rounded-full"
-                  >
-                    ✨ Enhance with AI
-                  </button>
                 </div>
               )}
 
-              {/* AI enhancements list */}
+              {/* AI improvements list */}
               {resumeView === "enhanced" && enhancedData?.enhancements?.length > 0 && (
                 <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5">
                   <h3 className="text-sm font-bold text-emerald-400 mb-3">✨ AI Improvements Applied</h3>
                   <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                    {(enhancedData.enhancements as string[]).slice(0, 8).map((item, i) => (
+                    {(enhancedData.enhancements as string[]).slice(0, 8).map((item: string, i: number) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
                         <span className="text-emerald-400 flex-shrink-0 mt-0.5">✓</span>{item}
                       </li>
@@ -1231,7 +1263,7 @@ export default function AtsScorePage() {
                 </div>
               )}
 
-              {/* Resume editor */}
+              {/* Resume editor — full width, no card wrapper */}
               <ProfessionalResumeEditor
                 key={resumeView}
                 initialData={resumeView === "enhanced" && enhancedData ? enhancedData : sd}
@@ -1242,8 +1274,8 @@ export default function AtsScorePage() {
                 enhancedScore={resumeView === "enhanced" ? (enhancedData?.atsScore ?? null) : null}
               />
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* ── VIEW HISTORY ── */}
         <div className="flex justify-center">
