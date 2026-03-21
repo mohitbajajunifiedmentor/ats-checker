@@ -435,46 +435,94 @@ export default function AtsScorePage() {
   /* ── UPLOADING ── */
   if (phase === "uploading" && uploadFile) {
     const done = uploadProg >= 100;
-    const sz = 168, r = 65, circ = 2 * Math.PI * r;
+    const sz = 200, r = 80, circ = 2 * Math.PI * r;
     return (
-      <div className="min-h-screen bg-[#030712] text-slate-100 flex items-center justify-center px-4">
-        <div className="max-w-sm w-full glass-card rounded-3xl border border-slate-700/50 p-8 shadow-2xl" style={{ background:"rgba(15,23,42,.75)", backdropFilter:"blur(28px)" }}>
-          <div className="text-center mb-6">
-            <h2 className="text-xl font-bold text-white">Uploading Resume</h2>
-            <p className="text-sm text-slate-400 mt-1">Securely transmitting to our servers…</p>
+      <div className="min-h-screen bg-[#030712] text-slate-100 flex flex-col" style={{ background:"radial-gradient(ellipse 80% 60% at 50% -10%,rgba(16,185,129,.08),transparent)" }}>
+        {/* Top bar */}
+        <div className="border-b border-slate-800/50 px-8 h-14 flex items-center">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center font-black text-sm text-slate-900" style={{ background:"linear-gradient(135deg,#34d399,#0d9488)" }}>A</div>
+            <span className="font-bold text-white text-base tracking-tight">ATS<span style={{ background:"linear-gradient(135deg,#10b981,#14b8a6)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>Checker</span></span>
           </div>
-          <div className="flex flex-col items-center gap-7">
-            <div className="relative" style={{ width:sz, height:sz }}>
-              <div className="absolute inset-0 rounded-full" style={{ boxShadow:`0 0 ${done?60:35}px rgba(16,185,129,${done?.55:.22})`, transition:"box-shadow .7s ease" }}/>
-              <div className="absolute inset-[-6px] rounded-full opacity-30" style={{ border:"1px dashed rgba(16,185,129,.4)", animation:"spin 8s linear infinite" }}/>
-              <svg width={sz} height={sz} className="-rotate-90" viewBox={`0 0 ${sz} ${sz}`}>
-                <circle cx={sz/2} cy={sz/2} r={r} fill="none" stroke="#1e293b" strokeWidth="10"/>
-                <circle cx={sz/2} cy={sz/2} r={r} fill="none" stroke="#10b981" strokeWidth="10"
-                  strokeDasharray={circ} strokeDashoffset={circ-(uploadProg/100)*circ} strokeLinecap="round"
-                  style={{ filter:"drop-shadow(0 0 10px rgba(16,185,129,.65))", transition:"stroke-dashoffset .08s linear" }}/>
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                {done ? <span className="text-5xl">✅</span> : (
-                  <><span className="text-3xl font-black text-emerald-400">{Math.round(uploadProg)}%</span>
-                  <span className="text-xs text-slate-500 mt-1">uploading</span></>
-                )}
+        </div>
+
+        {/* Main content */}
+        <div className="flex-1 flex items-center justify-center px-6 py-16">
+          <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+
+            {/* Left: big progress ring */}
+            <div className="flex flex-col items-center gap-8">
+              <div className="relative" style={{ width:sz, height:sz }}>
+                <div className="absolute inset-0 rounded-full" style={{ boxShadow:`0 0 ${done?80:45}px rgba(16,185,129,${done?.4:.15})`, transition:"box-shadow .7s ease" }}/>
+                <div className="absolute inset-[-10px] rounded-full opacity-20" style={{ border:"1px dashed rgba(16,185,129,.5)", animation:"spin 10s linear infinite" }}/>
+                <div className="absolute inset-[-20px] rounded-full opacity-10" style={{ border:"1px dashed rgba(16,185,129,.3)", animation:"spin 16s linear infinite reverse" }}/>
+                <svg width={sz} height={sz} className="-rotate-90" viewBox={`0 0 ${sz} ${sz}`}>
+                  <circle cx={sz/2} cy={sz/2} r={r} fill="none" stroke="#0f172a" strokeWidth="12"/>
+                  <circle cx={sz/2} cy={sz/2} r={r} fill="none" stroke="#10b981" strokeWidth="12"
+                    strokeDasharray={circ} strokeDashoffset={circ-(uploadProg/100)*circ} strokeLinecap="round"
+                    style={{ filter:"drop-shadow(0 0 14px rgba(16,185,129,.7))", transition:"stroke-dashoffset .08s linear" }}/>
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  {done
+                    ? <span className="text-6xl" style={{ animation:"checkPop .5s cubic-bezier(.34,1.56,.64,1) both" }}>✅</span>
+                    : <><span className="text-5xl font-black text-emerald-400 tabular-nums">{Math.round(uploadProg)}%</span><span className="text-sm text-slate-500 mt-1 font-medium">uploading</span></>
+                  }
+                </div>
+              </div>
+
+              {/* File info */}
+              <div className="text-center">
+                <div className="inline-flex items-center gap-2.5 bg-slate-900/60 border border-slate-800 rounded-xl px-4 py-2.5 mb-2">
+                  <span className="text-lg">📄</span>
+                  <span className="text-sm font-semibold text-slate-200 max-w-[220px] truncate">{uploadFile.name}</span>
+                </div>
+                <p className="text-xs text-slate-600">{(uploadFile.size/1024/1024).toFixed(2)} MB · PDF</p>
               </div>
             </div>
-            <div className="text-center">
-              <p className="text-sm font-semibold text-slate-200 max-w-[230px] truncate">{uploadFile.name}</p>
-              <p className="text-xs text-slate-500 mt-1">{(uploadFile.size/1024/1024).toFixed(2)} MB · PDF</p>
-            </div>
-            <div className="w-full">
-              <div className="flex justify-between text-xs mb-2">
-                <span className={uploadProg>=100?"text-emerald-400":"text-slate-500"}>{uploadProg>=100?"Upload complete!":"Uploading resume…"}</span>
-                <span className="text-emerald-400 font-bold">{Math.round(uploadProg)}%</span>
+
+            {/* Right: status + bar */}
+            <div className="space-y-8">
+              <div>
+                <h2 className="text-3xl font-extrabold text-white mb-3">Uploading Your Resume</h2>
+                <p className="text-slate-400 leading-relaxed">
+                  Securely transmitting your resume to our servers. Your file is encrypted end-to-end — we never store raw PDFs beyond analysis.
+                </p>
               </div>
-              <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-                <div className="h-full rounded-full" style={{ width:`${uploadProg}%`, background:"linear-gradient(90deg,#10b981,#14b8a6,#34d399)", transition:"width .08s linear" }}/>
+
+              {/* Progress bar */}
+              <div>
+                <div className="flex justify-between text-sm mb-3">
+                  <span className={uploadProg>=100?"text-emerald-400 font-semibold":"text-slate-400"}>
+                    {uploadProg>=100 ? "✓ Upload complete — starting AI analysis…" : "Uploading resume…"}
+                  </span>
+                  <span className="text-emerald-400 font-bold tabular-nums">{Math.round(uploadProg)}%</span>
+                </div>
+                <div className="w-full h-2.5 bg-slate-800/80 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-75" style={{ width:`${uploadProg}%`, background:"linear-gradient(90deg,#10b981,#14b8a6,#34d399)", boxShadow:"0 0 12px rgba(16,185,129,.5)" }}/>
+                </div>
+              </div>
+
+              {/* Trust signals */}
+              <div className="grid grid-cols-1 gap-3">
+                {[
+                  { icon:"🔒", title:"End-to-end encrypted", desc:"Your resume travels over TLS — never intercepted" },
+                  { icon:"🤖", title:"GPT-4o analysis ready", desc:"AI engine pre-loaded and waiting for your file" },
+                  { icon:"⚡", title:"Results in ~30 seconds", desc:"Score, keyword gaps, and section breakdown" },
+                ].map(({ icon, title, desc }) => (
+                  <div key={title} className="flex items-start gap-3 rounded-xl border border-slate-800/60 bg-slate-900/30 px-4 py-3">
+                    <span className="text-lg shrink-0">{icon}</span>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-200">{title}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{desc}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         </div>
+
+        <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}} @keyframes checkPop{0%{transform:scale(0) rotate(-25deg);opacity:0}65%{transform:scale(1.2) rotate(6deg)}100%{transform:scale(1) rotate(0deg);opacity:1}}`}</style>
       </div>
     );
   }
@@ -482,64 +530,125 @@ export default function AtsScorePage() {
   /* ── SCANNING / FINALIZING ── */
   if (phase === "scanning" || phase === "finalizing") {
     return (
-      <div className="min-h-screen bg-[#030712] text-slate-100 flex items-center justify-center px-4">
-        <div className="max-w-sm w-full rounded-3xl border border-slate-700/50 p-7 shadow-2xl" style={{ background:"rgba(15,23,42,.75)", backdropFilter:"blur(28px)" }}>
-          <div className="text-center mb-7">
-            <h2 className="text-xl font-bold text-white">AI is Analyzing Your Resume</h2>
-            <p className="text-sm text-slate-400 mt-1">
-              {phase === "finalizing" ? "Almost there — finalizing your results…" : "GPT-4o is evaluating your resume against ATS rubrics"}
-            </p>
+      <div className="min-h-screen bg-[#030712] text-slate-100 flex flex-col" style={{ background:"radial-gradient(ellipse 80% 50% at 50% -5%,rgba(16,185,129,.07),transparent)" }}>
+        {/* Top bar */}
+        <div className="border-b border-slate-800/50 px-8 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center font-black text-sm text-slate-900" style={{ background:"linear-gradient(135deg,#34d399,#0d9488)" }}>A</div>
+            <span className="font-bold text-white text-base tracking-tight">ATS<span style={{ background:"linear-gradient(135deg,#10b981,#14b8a6)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>Checker</span></span>
           </div>
-          <div className="flex justify-center mb-7">
-            <div className="relative w-36 h-48 rounded-2xl border-2 border-slate-700 bg-slate-900 shadow-xl overflow-hidden">
-              <div className="px-3.5 pt-4 space-y-2">
-                <div className="h-2.5 w-1/2 rounded bg-slate-700"/>
-                {[1,.9,.8,1,.75,.9,.85,.7].map((w,i) => (
-                  <div key={i} className="h-1.5 rounded bg-slate-800" style={{ width:`${w*100}%` }}/>
-                ))}
-              </div>
-              <div className="absolute left-0 right-0 h-px" style={{ top:`${Math.min(scanProgress,98)}%`, background:"linear-gradient(90deg,transparent,rgba(52,211,153,.95),transparent)", transition:"top .7s ease-in-out" }}/>
-            </div>
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"/>
+            AI is working…
           </div>
-          <div className="space-y-2 mb-6">
-            {SCAN_STEPS.map(step => {
-              const active = scanStep === step.id && phase !== "finalizing";
-              const done   = scanStep > step.id || phase === "finalizing";
-              return (
-                <div key={step.id} className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border transition-all duration-300 ${active?"border-emerald-500/50 bg-emerald-500/7":done?"border-slate-800/50 bg-slate-900/25":"border-transparent opacity-25"}`}>
-                  <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm ${done?"bg-emerald-500/20 text-emerald-400":active?"bg-emerald-500/10 text-emerald-300":"bg-slate-800 text-slate-600"}`}>
-                    {done ? "✓" : step.icon}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-semibold ${done?"text-emerald-400":active?"text-emerald-300":"text-slate-600"}`}>{step.label}</p>
-                    {active && <p className="text-xs text-slate-400 mt-0.5 truncate">{step.desc}</p>}
-                  </div>
-                  {active && <div className="shrink-0 w-4 h-4 rounded-full border-2 border-emerald-400 border-t-transparent animate-spin"/>}
+        </div>
+
+        {/* Main */}
+        <div className="flex-1 flex items-center justify-center px-6 py-16">
+          <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+
+            {/* Left: document scanner visual */}
+            <div className="flex flex-col items-center gap-6">
+              {/* Big document mock */}
+              <div className="relative w-64 h-80 rounded-2xl border border-slate-700/70 shadow-2xl shadow-black/60 overflow-hidden" style={{ background:"#0d1829" }}>
+                {/* Document lines */}
+                <div className="p-6 space-y-3">
+                  <div className="h-3 w-2/5 rounded bg-slate-700"/>
+                  <div className="h-1.5 rounded bg-slate-800"/>
+                  <div className="h-1.5 w-11/12 rounded bg-slate-800"/>
+                  <div className="h-1.5 w-4/5 rounded bg-slate-800"/>
+                  <div className="mt-4 h-2 w-1/4 rounded bg-slate-700"/>
+                  <div className="h-1.5 w-full rounded bg-slate-800"/>
+                  <div className="h-1.5 w-10/12 rounded bg-slate-800"/>
+                  <div className="h-1.5 w-full rounded bg-slate-800"/>
+                  <div className="h-1.5 w-9/12 rounded bg-slate-800"/>
+                  <div className="mt-4 h-2 w-1/3 rounded bg-slate-700"/>
+                  <div className="h-1.5 w-full rounded bg-slate-800"/>
+                  <div className="h-1.5 w-11/12 rounded bg-slate-800"/>
+                  <div className="h-1.5 w-4/5 rounded bg-slate-800"/>
+                  <div className="h-1.5 w-full rounded bg-slate-800"/>
+                  <div className="h-1.5 w-3/4 rounded bg-slate-800"/>
                 </div>
-              );
-            })}
-            {phase === "finalizing" && (
-              <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-violet-500/40 bg-violet-500/7">
-                <div className="shrink-0 w-8 h-8 rounded-full bg-violet-500/15 text-violet-300 flex items-center justify-center">✨</div>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-violet-300">Finalizing Results</p>
-                  <p className="text-xs text-slate-400 mt-0.5">Generating your personalized ATS insights…</p>
-                </div>
-                <div className="shrink-0 w-4 h-4 rounded-full border-2 border-violet-400 border-t-transparent animate-spin"/>
+                {/* Scan beam */}
+                <div className="absolute left-0 right-0 h-0.5 pointer-events-none" style={{ top:`${Math.min(scanProgress,97)}%`, background:"linear-gradient(90deg,transparent,rgba(52,211,153,1),transparent)", boxShadow:"0 0 16px 4px rgba(52,211,153,.35)", transition:"top .8s ease-in-out" }}/>
+                {/* Highlight overlay */}
+                <div className="absolute inset-0 pointer-events-none" style={{ background:`linear-gradient(to bottom, transparent ${Math.min(scanProgress,97)-4}%, rgba(52,211,153,.03) ${Math.min(scanProgress,97)}%, transparent ${Math.min(scanProgress,97)+2}%)`, transition:"all .8s ease-in-out" }}/>
               </div>
-            )}
-          </div>
-          <div>
-            <div className="flex justify-between text-xs mb-1.5">
-              <span className="text-slate-500">{phase === "finalizing" ? "Finalizing…" : "Scanning document…"}</span>
-              <span className="text-emerald-400 font-bold">{Math.round(scanProgress)}%</span>
+
+              {/* Overall progress */}
+              <div className="w-64">
+                <div className="flex justify-between text-xs mb-2">
+                  <span className="text-slate-500">{phase === "finalizing" ? "Finalizing results…" : "Scanning document…"}</span>
+                  <span className="text-emerald-400 font-bold tabular-nums">{Math.round(scanProgress)}%</span>
+                </div>
+                <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-500 ease-out" style={{ width:`${scanProgress}%`, background:"linear-gradient(90deg,#10b981,#14b8a6)", boxShadow:"0 0 8px rgba(16,185,129,.4)" }}/>
+                </div>
+              </div>
             </div>
-            <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-              <div className="h-full rounded-full transition-all duration-500 ease-out"
-                style={{ width:`${scanProgress}%`, background:"linear-gradient(90deg,#10b981,#14b8a6)" }}/>
+
+            {/* Right: steps + headline */}
+            <div className="space-y-8">
+              <div>
+                <div className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 rounded-full px-3 py-1.5 mb-4">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"/>
+                  GPT-4o · Live Analysis
+                </div>
+                <h2 className="text-3xl font-extrabold text-white mb-3">
+                  {phase === "finalizing" ? "Almost There…" : "AI is Analyzing Your Resume"}
+                </h2>
+                <p className="text-slate-400 leading-relaxed">
+                  {phase === "finalizing"
+                    ? "Generating your personalized ATS score, keyword gaps, and improvement suggestions."
+                    : "GPT-4o is reading every section of your resume and evaluating it against ATS rubrics."}
+                </p>
+              </div>
+
+              {/* Step list */}
+              <div className="space-y-3">
+                {SCAN_STEPS.map(step => {
+                  const active = scanStep === step.id && phase !== "finalizing";
+                  const done   = scanStep > step.id || phase === "finalizing";
+                  return (
+                    <div key={step.id} className={`flex items-center gap-4 rounded-2xl border px-5 py-4 transition-all duration-300 ${
+                      active ? "border-emerald-500/40 bg-emerald-500/6 shadow-lg shadow-emerald-500/5"
+                      : done  ? "border-slate-800/60 bg-slate-900/20"
+                              : "border-transparent opacity-30"
+                    }`}>
+                      <div className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-base font-bold transition-all duration-300 ${
+                        done   ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                        : active ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20"
+                                 : "bg-slate-800 text-slate-600"
+                      }`}>
+                        {done ? "✓" : step.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-semibold ${done?"text-emerald-400":active?"text-slate-100":"text-slate-600"}`}>{step.label}</p>
+                        {active && <p className="text-xs text-slate-400 mt-0.5">{step.desc}</p>}
+                        {done && <p className="text-xs text-emerald-500/70 mt-0.5">Complete</p>}
+                      </div>
+                      {active && <div className="shrink-0 w-4 h-4 rounded-full border-2 border-emerald-400 border-t-transparent animate-spin"/>}
+                    </div>
+                  );
+                })}
+
+                {/* Finalizing step */}
+                {phase === "finalizing" && (
+                  <div className="flex items-center gap-4 rounded-2xl border border-violet-500/35 bg-violet-500/6 px-5 py-4 shadow-lg shadow-violet-500/5">
+                    <div className="shrink-0 w-9 h-9 rounded-full bg-violet-500/15 border border-violet-500/30 text-violet-300 flex items-center justify-center text-base">✨</div>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-violet-200">Finalizing Results</p>
+                      <p className="text-xs text-slate-400 mt-0.5">Generating your personalized ATS insights…</p>
+                    </div>
+                    <div className="shrink-0 w-4 h-4 rounded-full border-2 border-violet-400 border-t-transparent animate-spin"/>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
+
+        <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
       </div>
     );
   }
@@ -555,37 +664,97 @@ export default function AtsScorePage() {
 
   /* ── ENHANCING ── */
   if (phase === "enhancing") {
+    const enhSteps = [
+      { label:"Analyzing job requirements",          threshold:15 },
+      { label:"Rewriting professional summary",      threshold:32 },
+      { label:"Optimizing experience bullet points", threshold:52 },
+      { label:"Injecting missing keywords",          threshold:70 },
+      { label:"Finalizing enhanced resume",          threshold:100 },
+    ];
     return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center px-4">
-        <div className="max-w-md w-full text-center">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-emerald-500/10 border-2 border-emerald-500/30 mb-6">
-            <span className="text-3xl" style={{ animation: "pulse 1.5s ease-in-out infinite" }}>✨</span>
+      <div className="min-h-screen bg-[#030712] text-slate-100 flex flex-col" style={{ background:"radial-gradient(ellipse 70% 50% at 50% -5%,rgba(16,185,129,.07),transparent)" }}>
+        {/* Top bar */}
+        <div className="border-b border-slate-800/50 px-8 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center font-black text-sm text-slate-900" style={{ background:"linear-gradient(135deg,#34d399,#0d9488)" }}>A</div>
+            <span className="font-bold text-white text-base tracking-tight">ATS<span style={{ background:"linear-gradient(135deg,#10b981,#14b8a6)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>Checker</span></span>
           </div>
-          <h2 className="text-2xl font-bold text-slate-50 mb-2">Enhancing Your Resume</h2>
-          <p className="text-slate-400 text-sm mb-8">
-            AI is rewriting your resume to align with the job description and inject missing keywords. Takes 15–30 seconds.
-          </p>
-          <div className="space-y-3 text-left mb-8">
-            {[
-              { label: "Analyzing job requirements",           done: enhanceProgress > 15 },
-              { label: "Rewriting professional summary",       done: enhanceProgress > 32 },
-              { label: "Optimizing experience bullet points",  done: enhanceProgress > 52 },
-              { label: "Injecting missing keywords",           done: enhanceProgress > 70 },
-              { label: "Finalizing enhanced resume",           done: enhanceProgress >= 100 },
-            ].map(({ label, done }) => (
-              <div key={label} className="flex items-center gap-3">
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all duration-500 ${done ? "border-emerald-500 bg-emerald-500/20 text-emerald-400" : "border-slate-700"}`}>
-                  {done && <span className="text-xs">✓</span>}
-                </div>
-                <span className={`text-sm ${done ? "text-emerald-300" : "text-slate-500"}`}>{label}</span>
-              </div>
-            ))}
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"/>
+            AI Enhancing…
           </div>
-          <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${enhanceProgress}%`, background: "linear-gradient(90deg,#10b981,#14b8a6)" }} />
-          </div>
-          <p className="text-xs text-slate-500 mt-2">{Math.round(enhanceProgress)}% complete</p>
         </div>
+
+        <div className="flex-1 flex items-center justify-center px-6 py-16">
+          <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+
+            {/* Left: visual */}
+            <div className="flex flex-col items-center gap-8">
+              <div className="relative w-48 h-48 flex items-center justify-center">
+                <div className="absolute inset-0 rounded-full opacity-20" style={{ border:"2px dashed rgba(16,185,129,.4)", animation:"spin 8s linear infinite" }}/>
+                <div className="absolute inset-4 rounded-full opacity-15" style={{ border:"2px dashed rgba(16,185,129,.3)", animation:"spin 12s linear infinite reverse" }}/>
+                <div className="w-28 h-28 rounded-full bg-emerald-500/10 border-2 border-emerald-500/30 flex items-center justify-center" style={{ animation:"pulse 2s ease-in-out infinite" }}>
+                  <span className="text-5xl">✨</span>
+                </div>
+              </div>
+
+              {/* Big progress number */}
+              <div className="text-center">
+                <p className="text-6xl font-black text-emerald-400 tabular-nums">{Math.round(enhanceProgress)}%</p>
+                <p className="text-sm text-slate-500 mt-1">complete</p>
+              </div>
+
+              <div className="w-56">
+                <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-500" style={{ width:`${enhanceProgress}%`, background:"linear-gradient(90deg,#10b981,#14b8a6,#34d399)", boxShadow:"0 0 10px rgba(16,185,129,.5)" }}/>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: steps */}
+            <div className="space-y-8">
+              <div>
+                <div className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 rounded-full px-3 py-1.5 mb-4">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"/>
+                  GPT-4o · Resume Rewrite
+                </div>
+                <h2 className="text-3xl font-extrabold text-white mb-3">Enhancing Your Resume</h2>
+                <p className="text-slate-400 leading-relaxed">
+                  AI is rewriting your resume to align with the job description, inject missing keywords, and maximize every ATS signal. Takes 15–30 seconds.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                {enhSteps.map(({ label, threshold }) => {
+                  const done = enhanceProgress >= threshold;
+                  const active = !done && enhanceProgress >= threshold - 20;
+                  return (
+                    <div key={label} className={`flex items-center gap-4 rounded-2xl border px-5 py-4 transition-all duration-500 ${
+                      done   ? "border-slate-800/60 bg-slate-900/20"
+                      : active ? "border-emerald-500/40 bg-emerald-500/6"
+                               : "border-transparent opacity-30"
+                    }`}>
+                      <div className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-500 ${
+                        done   ? "bg-emerald-500/20 border border-emerald-500/30 text-emerald-400"
+                        : active ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-300"
+                                 : "bg-slate-800 text-slate-600"
+                      }`}>
+                        {done ? "✓" : "⏳"}
+                      </div>
+                      <div className="flex-1">
+                        <p className={`text-sm font-semibold ${done?"text-emerald-400":active?"text-slate-200":"text-slate-600"}`}>{label}</p>
+                        {done && <p className="text-xs text-emerald-500/70 mt-0.5">Complete</p>}
+                        {active && !done && <p className="text-xs text-slate-400 mt-0.5">In progress…</p>}
+                      </div>
+                      {active && !done && <div className="shrink-0 w-4 h-4 rounded-full border-2 border-emerald-400 border-t-transparent animate-spin"/>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+        <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}} @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.7;transform:scale(1.05)}}`}</style>
       </div>
     );
   }
@@ -1176,7 +1345,7 @@ export default function AtsScorePage() {
 
         {/* ── FULL-SCREEN RESUME OVERLAY ── */}
         {showResumeTemplate && (
-          <div className="fixed inset-0 z-50 bg-[#0a0f1e] overflow-y-auto">
+          <div className="fixed inset-0 z-50 bg-[#060d1a] overflow-y-auto">
 
             {/* Sticky top bar */}
             <div className="sticky top-0 z-10 border-b border-slate-800/80 bg-slate-950/95 backdrop-blur-xl">
@@ -1194,7 +1363,7 @@ export default function AtsScorePage() {
                       <button
                         onClick={() => setResumeView("original")}
                         className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                          resumeView === "original" ? "bg-white text-slate-900 shadow" : "text-slate-400 hover:text-slate-200"
+                          resumeView === "original" ? "bg-slate-700 text-slate-100 shadow shadow-black/30" : "text-slate-400 hover:text-slate-200"
                         }`}
                       >
                         Original

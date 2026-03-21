@@ -57,12 +57,16 @@ function performFallbackAnalysis(resumeText, jobDescription) {
 function extractDataWithRegex(text) {
   const data = {
     name: null,
+    headline: null,
     email: null,
     phone: null,
     address: null,
     linkedin: null,
+    linkedinText: null,
     github: null,
+    githubText: null,
     portfolio: null,
+    portfolioText: null,
     summary: null,
     education: [],
     experience: [],
@@ -84,20 +88,24 @@ function extractDataWithRegex(text) {
     data.phone = phoneMatch[0];
   }
 
-  // Extract LinkedIn
-  const linkedinMatch = text.match(/linkedin\.com\/in\/[A-Za-z0-9_-]+/i);
+  // Extract LinkedIn — match with or without https://www. prefix
+  const linkedinMatch = text.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/([A-Za-z0-9_%-]+)/i);
   if (linkedinMatch) {
-    data.linkedin = linkedinMatch[0];
+    const username = linkedinMatch[1];
+    data.linkedin = `https://linkedin.com/in/${username}`;
+    data.linkedinText = username;
   }
 
-  // Extract GitHub
-  const githubMatch = text.match(/github\.com\/[A-Za-z0-9_-]+/i);
+  // Extract GitHub — match with or without https://www. prefix
+  const githubMatch = text.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/([A-Za-z0-9_-]+)/i);
   if (githubMatch) {
-    data.github = githubMatch[0];
+    const username = githubMatch[1];
+    data.github = `https://github.com/${username}`;
+    data.githubText = username;
   }
 
-  // Extract portfolio/website
-  const portfolioMatch = text.match(/https?:\/\/[^\s]+\.(com|net|org|io|dev)/i);
+  // Extract portfolio/website (skip linkedin/github already captured)
+  const portfolioMatch = text.match(/https?:\/\/(?!(?:www\.)?linkedin\.com)(?!(?:www\.)?github\.com)[^\s<>"]+\.(?:com|net|org|io|dev|me|co)[^\s<>".]*/i);
   if (portfolioMatch) {
     data.portfolio = portfolioMatch[0];
   }
@@ -360,16 +368,19 @@ You are a professional resume parser. Extract ALL available information from the
 
 IMPORTANT: Return ONLY valid JSON with this exact structure. Do not include any explanations or additional text.
 
+For LinkedIn and GitHub, look carefully — they may appear as plain text URLs (e.g., linkedin.com/in/username or github.com/username), with or without https://. Always return the full https:// URL.
+
 {
   "name": "Full name as it appears on resume or null",
+  "headline": "Professional title / job title shown under the name (e.g. 'Software Engineer', 'Data Scientist') or null",
   "email": "Email address or null",
   "phone": "Phone number or null",
-  "address": "Full address or null",
-  "linkedin": "LinkedIn profile URL (e.g. https://linkedin.com/in/username) or null",
-  "linkedinText": "LinkedIn display text as shown on the resume (e.g. 'username' or 'John Doe') or null",
-  "github": "GitHub profile URL (e.g. https://github.com/username) or null",
-  "githubText": "GitHub display text as shown on the resume (e.g. 'username') or null",
-  "portfolio": "Portfolio website URL or null",
+  "address": "City, State/Country or full address or null",
+  "linkedin": "Full LinkedIn URL starting with https:// (e.g. https://linkedin.com/in/username) — look for linkedin.com anywhere in the text or null",
+  "linkedinText": "LinkedIn username or display text (e.g. 'username') — just the part after /in/ or null",
+  "github": "Full GitHub URL starting with https:// (e.g. https://github.com/username) — look for github.com anywhere in the text or null",
+  "githubText": "GitHub username or display text (e.g. 'johndoe') — just the part after github.com/ or null",
+  "portfolio": "Portfolio or personal website URL (not linkedin or github) or null",
   "portfolioText": "Portfolio display text as shown on the resume or null",
   "summary": "Professional summary/objective section text or null",
   "education": [
@@ -385,7 +396,7 @@ IMPORTANT: Return ONLY valid JSON with this exact structure. Do not include any 
       "title": "Job title/position",
       "company": "Company name",
       "duration": "Employment period (e.g., Jan 2022 - Present)",
-      "description": "Detailed job responsibilities and achievements"
+      "description": "Detailed job responsibilities and achievements as bullet points"
     }
   ],
   "projects": [
@@ -393,7 +404,7 @@ IMPORTANT: Return ONLY valid JSON with this exact structure. Do not include any 
       "name": "Project name",
       "description": "Project description and technologies used",
       "technologies": ["Technology 1", "Technology 2"],
-      "githubRepo": "GitHub repository URL for this project or null",
+      "githubRepo": "GitHub repository URL for this specific project or null",
       "liveLink": "Live demo / deployed URL for this project or null"
     }
   ],
@@ -416,12 +427,16 @@ ${resumeText}
         model: "gpt-4o",
         messages: [
           {
+            role: "system",
+            content: "You are a precise resume parser. Return valid JSON only — no markdown, no extra text."
+          },
+          {
             role: "user",
-            content: extractPrompt.length > 10000 ? extractPrompt.substring(0, 10000) + "..." : extractPrompt
+            content: extractPrompt
           }
         ],
         temperature: 0.1,
-        max_tokens: 2000, // Limit response size
+        max_tokens: 3000,
       });
 
       let extractResponse = extractResult.choices[0].message.content;
@@ -439,6 +454,22 @@ ${resumeText}
         structuredData = {};
       }
 
+      // Supplement: if AI missed LinkedIn/GitHub, try regex on the raw text
+      if (!structuredData.linkedin) {
+        const liMatch = resumeText.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/([A-Za-z0-9_%-]+)/i);
+        if (liMatch) {
+          structuredData.linkedin = `https://linkedin.com/in/${liMatch[1]}`;
+          structuredData.linkedinText = structuredData.linkedinText || liMatch[1];
+        }
+      }
+      if (!structuredData.github) {
+        const ghMatch = resumeText.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/([A-Za-z0-9_-]+)/i);
+        if (ghMatch) {
+          structuredData.github = `https://github.com/${ghMatch[1]}`;
+          structuredData.githubText = structuredData.githubText || ghMatch[1];
+        }
+      }
+
     } catch (error) {
 
       console.error("AI extraction failed:", error.message);
@@ -453,6 +484,7 @@ ${resumeText}
     // Ensure structured data has proper defaults
     structuredData = {
       name: structuredData.name || null,
+      headline: structuredData.headline || null,
       email: structuredData.email || null,
       phone: structuredData.phone || null,
       address: structuredData.address || null,

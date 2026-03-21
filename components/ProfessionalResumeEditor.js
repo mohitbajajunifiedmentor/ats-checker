@@ -278,14 +278,12 @@ export default function ProfessionalResumeEditor({
       </div>
 
       {/* ════ A4 PAPER TRAY ════
-          Dark slate background simulates a desk / light-box
-          The white sheet is centred inside it.
+          Transparent — A4 sheet floats directly on the page background.
       */}
       <div style={{
-        background:"#1e293b",
-        borderRadius:12,
-        padding:"32px 24px",
-        overflowX:"auto",          /* allow horizontal scroll on small screens */
+        background:"transparent",
+        padding:"24px 0 40px",
+        overflowX:"auto",
       }}>
         {/* A4 white sheet */}
         <div
@@ -299,7 +297,7 @@ export default function ProfessionalResumeEditor({
             fontFamily:"'Segoe UI','Helvetica Neue',Arial,sans-serif",
             fontSize:FS.body,
             lineHeight:1.5,
-            boxShadow:"0 8px 40px rgba(0,0,0,0.55)",
+            boxShadow:"0 4px 60px rgba(0,0,0,0.70), 0 1px 0 rgba(255,255,255,0.04)",
             position:"relative",
           }}
         >
@@ -688,9 +686,9 @@ export default function ProfessionalResumeEditor({
           </div> */}
         </div>{/* /A4 sheet */}
 
-        {/* page count hint */}
-        <div style={{ textAlign:"center",marginTop:10,fontSize:11,color:"#475569" }}>
-          A4 · 210 × 297 mm · Download as PDF to save
+        {/* page hint */}
+        <div style={{ textAlign:"center",marginTop:16,fontSize:11,color:"#64748b",letterSpacing:"0.03em" }}>
+          A4 · 210 × 297 mm
         </div>
       </div>{/* /paper tray */}
 
