@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 // KeywordAnalysis import retained for potential future use
 // import KeywordAnalysis from "@/components/KeywordAnalysis";
 import ProfessionalResumeEditor from "@/components/ProfessionalResumeEditor";
+import ClassicResumeEditor from "@/components/ClassicResumeEditor";
 import { uploadStore } from "@/app/upload-store";
 
 /* ─────────────────────────────────────────────────────
@@ -291,6 +292,7 @@ export default function AtsScorePage() {
 
   /* Resume template collapsible */
   const [showResumeTemplate, setShowResumeTemplate] = useState(false);
+  const [templateStyle, setTemplateStyle] = useState<"professional" | "classic">("professional");
 
   const showResults = useCallback((data: any) => {
     window.localStorage.setItem("atsAnalyzeResult", JSON.stringify(data));
@@ -1391,13 +1393,35 @@ export default function AtsScorePage() {
                   )}
                 </div>
 
-                {/* Right: close */}
-                <button
-                  onClick={() => setShowResumeTemplate(false)}
-                  className="shrink-0 flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-white border border-slate-700 hover:border-slate-500 rounded-lg px-3 py-1.5 transition-all"
-                >
-                  ✕ Close
-                </button>
+                {/* Right: template switcher + close */}
+                <div className="flex items-center gap-2 shrink-0">
+                  {/* Template style picker */}
+                  <div className="hidden sm:flex items-center gap-1 p-0.5 rounded-lg bg-slate-800 border border-slate-700">
+                    <button
+                      onClick={() => setTemplateStyle("professional")}
+                      className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                        templateStyle === "professional" ? "bg-indigo-600 text-white shadow shadow-indigo-600/30" : "text-slate-400 hover:text-slate-200"
+                      }`}
+                    >
+                      🎨 Professional
+                    </button>
+                    <button
+                      onClick={() => setTemplateStyle("classic")}
+                      className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                        templateStyle === "classic" ? "bg-indigo-600 text-white shadow shadow-indigo-600/30" : "text-slate-400 hover:text-slate-200"
+                      }`}
+                    >
+                      📄 Classic
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() => setShowResumeTemplate(false)}
+                    className="flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-white border border-slate-700 hover:border-slate-500 rounded-lg px-3 py-1.5 transition-all"
+                  >
+                    ✕ Close
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1432,16 +1456,48 @@ export default function AtsScorePage() {
                 </div>
               )}
 
+              {/* Mobile template switcher */}
+              <div className="flex sm:hidden items-center gap-1 p-0.5 rounded-lg bg-slate-800 border border-slate-700 w-fit">
+                <button
+                  onClick={() => setTemplateStyle("professional")}
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                    templateStyle === "professional" ? "bg-indigo-600 text-white" : "text-slate-400"
+                  }`}
+                >
+                  🎨 Professional
+                </button>
+                <button
+                  onClick={() => setTemplateStyle("classic")}
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                    templateStyle === "classic" ? "bg-indigo-600 text-white" : "text-slate-400"
+                  }`}
+                >
+                  📄 Classic
+                </button>
+              </div>
+
               {/* Resume editor — full width, no card wrapper */}
-              <ProfessionalResumeEditor
-                key={resumeView}
-                initialData={resumeView === "enhanced" && enhancedData ? enhancedData : sd}
-                onSave={handleSaveResume}
-                resumeId={result?.resumeId}
-                isEnhanced={resumeView === "enhanced"}
-                originalScore={score}
-                enhancedScore={resumeView === "enhanced" ? (enhancedData?.atsScore ?? null) : null}
-              />
+              {templateStyle === "professional" ? (
+                <ProfessionalResumeEditor
+                  key={`professional-${resumeView}`}
+                  initialData={resumeView === "enhanced" && enhancedData ? enhancedData : sd}
+                  onSave={handleSaveResume}
+                  resumeId={result?.resumeId}
+                  isEnhanced={resumeView === "enhanced"}
+                  originalScore={score}
+                  enhancedScore={resumeView === "enhanced" ? (enhancedData?.atsScore ?? null) : null}
+                />
+              ) : (
+                <ClassicResumeEditor
+                  key={`classic-${resumeView}`}
+                  initialData={resumeView === "enhanced" && enhancedData ? enhancedData : sd}
+                  onSave={handleSaveResume}
+                  resumeId={result?.resumeId}
+                  isEnhanced={resumeView === "enhanced"}
+                  originalScore={score}
+                  enhancedScore={resumeView === "enhanced" ? (enhancedData?.atsScore ?? null) : null}
+                />
+              )}
             </div>
           </div>
         )}

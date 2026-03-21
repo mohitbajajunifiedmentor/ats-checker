@@ -1,5 +1,6 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
+import { FaGithub, FaExternalLinkAlt } from "react-icons/fa";
 
 /* ══════════════════════════════════════════════════════════════
    A4 DIMENSIONS
@@ -25,14 +26,10 @@ function downloadAsPrint(sheetId, fileName) {
   <title>${fileName}</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    body {
-      background:#fff;
-      -webkit-print-color-adjust:exact;
-      print-color-adjust:exact;
-      font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;
-    }
+    html, body { width:100%; background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact; font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif; }
     @page { margin:0; size:A4 portrait; }
-    @media print { body { margin:0; } }
+    #${sheetId} { width:100% !important; min-width:0 !important; box-shadow:none !important; position:static !important; }
+    [data-page-break] { display:none !important; }
   </style>
 </head>
 <body>${el.outerHTML}<script>
@@ -185,12 +182,27 @@ export default function ProfessionalResumeEditor({
   originalScore = null,
   enhancedScore = null,
 }) {
-  const [data,     setData]     = useState(initialData || {});
-  const [editing,  setEditing]  = useState(false);
-  const [saving,   setSaving]   = useState(false);
-  const [saved,    setSaved]    = useState(false);
-  const [printing, setPrinting] = useState(false);
-  const sheetId = "resume-a4-sheet";
+  const [data,      setData]     = useState(initialData || {});
+  const [editing,   setEditing]  = useState(false);
+  const [saving,    setSaving]   = useState(false);
+  const [saved,     setSaved]    = useState(false);
+  const [printing,  setPrinting] = useState(false);
+  const [pageBreaks, setPageBreaks] = useState([]);
+  const sheetRef = useRef(null);
+  const sheetId  = "resume-a4-sheet";
+
+  /* Track real sheet height → compute page-break positions */
+  useEffect(() => {
+    const el = sheetRef.current;
+    if (!el) return;
+    const obs = new ResizeObserver(([entry]) => {
+      const h = entry.contentRect.height;
+      const count = Math.floor(h / A4_H);
+      setPageBreaks(count > 0 ? Array.from({ length: count }, (_, i) => A4_H * (i + 1)) : []);
+    });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
 
   const set    = useCallback((f,v)      => setData(d=>({ ...d,[f]:v })),[]);
   const setArr = useCallback((f,i,sf,v) => setData(d=>({
@@ -288,6 +300,7 @@ export default function ProfessionalResumeEditor({
         {/* A4 white sheet */}
         <div
           id={sheetId}
+          ref={sheetRef}
           style={{
             width:A4_W,
             minHeight:A4_H,
@@ -301,6 +314,19 @@ export default function ProfessionalResumeEditor({
             position:"relative",
           }}
         >
+          {/* ── PAGE BREAK MARKERS (screen-only, hidden on print) ── */}
+          {pageBreaks.map((y, i) => (
+            <div key={i} data-page-break="true" style={{
+              position:"absolute", top:y, left:0, right:0, zIndex:20, pointerEvents:"none",
+            }}>
+              <div style={{ height:2, background:"linear-gradient(to bottom,rgba(0,0,0,0.18),transparent)" }}/>
+              <div style={{ borderTop:"2px dashed #94a3b8", opacity:0.5 }}/>
+              <div style={{ position:"absolute", right:10, top:-10, fontSize:8, color:"#94a3b8",
+                background:"#fff", padding:"0 6px", borderRadius:3, fontFamily:"sans-serif" }}>
+                Page {i + 2}
+              </div>
+            </div>
+          ))}
 
           {/* ── HEADER STRIP ─────────────────────────────────── */}
           <div style={{
@@ -501,23 +527,26 @@ export default function ProfessionalResumeEditor({
                   <SecHead onAdd={editing?()=>addArr("certifications",{name:"",issuer:"",year:""}):null} addLabel="Cert">
                     Certifications
                   </SecHead>
-                  {(data.certifications||[]).map((cert,i)=>(
+                  {(data.certifications||[]).map((cert,i)=>{
+                    const certObj = typeof cert==="string" ? {name:cert,issuer:"",year:""} : cert;
+                    return (
                     <div key={i} style={{ marginBottom:8 }}>
                       {editing?(
                         <div style={{ display:"flex",flexDirection:"column",gap:3 }}>
-                          <EditText value={cert.name} onChange={v=>setArr("certifications",i,"name",v)} placeholder="Certification" fontSize={10}/>
-                          <EditText value={cert.issuer} onChange={v=>setArr("certifications",i,"issuer",v)} placeholder="Issuer" fontSize={10}/>
-                          <EditText value={cert.year} onChange={v=>setArr("certifications",i,"year",v)} placeholder="Year" fontSize={10}/>
+                          <EditText value={certObj.name||""} onChange={v=>setArr("certifications",i,"name",v)} placeholder="Certification" fontSize={10}/>
+                          <EditText value={certObj.issuer||""} onChange={v=>setArr("certifications",i,"issuer",v)} placeholder="Issuer" fontSize={10}/>
+                          <EditText value={certObj.year||""} onChange={v=>setArr("certifications",i,"year",v)} placeholder="Year" fontSize={10}/>
                           <button onClick={()=>delArr("certifications",i)} style={{ alignSelf:"flex-end",color:"#f87171",fontSize:9,background:"none",border:"none",cursor:"pointer" }}>Remove</button>
                         </div>
                       ):(
                         <>
-                          <div style={{ fontSize:10,fontWeight:600,color:C.text,lineHeight:1.3 }}>{cert.name}</div>
-                          <div style={{ fontSize:9,color:C.textSub,marginTop:1 }}>{cert.issuer}{cert.year?` · ${cert.year}`:""}</div>
+                          <div style={{ fontSize:10,fontWeight:600,color:C.text,lineHeight:1.3 }}>{certObj.name}</div>
+                          {(certObj.issuer||certObj.year)&&<div style={{ fontSize:9,color:C.textSub,marginTop:1 }}>{certObj.issuer}{certObj.year?` · ${certObj.year}`:""}</div>}
                         </>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </section>
               )}
 
@@ -637,17 +666,17 @@ export default function ProfessionalResumeEditor({
                             {proj.githubRepo&&(
                               <a href={proj.githubRepo.startsWith("http")?proj.githubRepo:`https://${proj.githubRepo}`}
                                 target="_blank" rel="noopener noreferrer"
-                                style={{ fontSize:8.5,color:"#4338ca",textDecoration:"none",display:"inline-flex",alignItems:"center",gap:2,
+                                style={{ fontSize:8.5,color:"#4338ca",textDecoration:"none",display:"inline-flex",alignItems:"center",gap:3,
                                   background:"#eef2ff",border:"1px solid #c7d2fe",borderRadius:3,padding:"1px 6px" }}>
-                                💻 GitHub
+                                <FaGithub size={10}/> GitHub
                               </a>
                             )}
                             {proj.liveLink&&(
                               <a href={proj.liveLink.startsWith("http")?proj.liveLink:`https://${proj.liveLink}`}
                                 target="_blank" rel="noopener noreferrer"
-                                style={{ fontSize:8.5,color:"#0369a1",textDecoration:"none",display:"inline-flex",alignItems:"center",gap:2,
+                                style={{ fontSize:8.5,color:"#0369a1",textDecoration:"none",display:"inline-flex",alignItems:"center",gap:3,
                                   background:"#e0f2fe",border:"1px solid #7dd3fc",borderRadius:3,padding:"1px 6px" }}>
-                                🔗 Live
+                                <FaExternalLinkAlt size={8}/> Live
                               </a>
                             )}
                           </div>

@@ -366,57 +366,67 @@ export async function POST(req) {
       const extractPrompt = `
 You are a professional resume parser. Extract ALL available information from the resume text below.
 
-IMPORTANT: Return ONLY valid JSON with this exact structure. Do not include any explanations or additional text.
+IMPORTANT: Return ONLY valid JSON. No markdown fences, no extra text.
 
-For LinkedIn and GitHub, look carefully — they may appear as plain text URLs (e.g., linkedin.com/in/username or github.com/username), with or without https://. Always return the full https:// URL.
+=== CONTACT LINKS (CRITICAL) ===
+Many resumes use LaTeX/FontAwesome icon fonts. The PDF-to-text converter replaces icons with Unicode symbols or letters. Apply these rules:
+1. Near the top of the resume, look for short words/usernames next to symbols like: ð, B, §, in, @, GitHub, LinkedIn
+2. If you see a pattern like "ð username" OR "in username" (LinkedIn icon + username) → set linkedin="https://linkedin.com/in/username", linkedinText="username"
+3. If you see "§ username" OR "github username" (GitHub icon + username) → set github="https://github.com/username", githubText="username"
+4. Also scan the full text for full URLs: linkedin.com/in/... or github.com/... (with or without https://)
+5. Construct full https:// URLs from any username you find — never leave github/linkedin null if a username is visible
+
+=== CERTIFICATIONS (CRITICAL) ===
+Always return certifications as objects with "name" field. Never return plain strings.
+If no issuer or year is mentioned, use null for those fields.
 
 {
   "name": "Full name as it appears on resume or null",
-  "headline": "Professional title / job title shown under the name (e.g. 'Software Engineer', 'Data Scientist') or null",
+  "headline": "Professional title shown under the name (e.g. 'Software Engineer') or null",
   "email": "Email address or null",
   "phone": "Phone number or null",
   "address": "City, State/Country or full address or null",
-  "linkedin": "Full LinkedIn URL starting with https:// (e.g. https://linkedin.com/in/username) — look for linkedin.com anywhere in the text or null",
-  "linkedinText": "LinkedIn username or display text (e.g. 'username') — just the part after /in/ or null",
-  "github": "Full GitHub URL starting with https:// (e.g. https://github.com/username) — look for github.com anywhere in the text or null",
-  "githubText": "GitHub username or display text (e.g. 'johndoe') — just the part after github.com/ or null",
-  "portfolio": "Portfolio or personal website URL (not linkedin or github) or null",
-  "portfolioText": "Portfolio display text as shown on the resume or null",
-  "summary": "Professional summary/objective section text or null",
+  "linkedin": "Full LinkedIn URL starting with https:// — construct from any username found near a LinkedIn icon or null",
+  "linkedinText": "LinkedIn username/display text or null",
+  "github": "Full GitHub URL starting with https:// — construct from any username found near a GitHub icon or null",
+  "githubText": "GitHub username/display text or null",
+  "portfolio": "Portfolio website URL (not linkedin/github) or null",
+  "portfolioText": "Portfolio display text or null",
+  "summary": "Professional summary/objective text or null",
   "education": [
     {
-      "degree": "Degree name (e.g., Bachelor of Science in Computer Science)",
+      "degree": "Degree name",
       "institution": "University/College name",
-      "year": "Graduation year or date range (e.g., 2020-2024)",
-      "gpa": "GPA if mentioned or null"
+      "year": "Graduation year or date range",
+      "gpa": "GPA or null"
     }
   ],
   "experience": [
     {
-      "title": "Job title/position",
+      "title": "Job title",
       "company": "Company name",
-      "duration": "Employment period (e.g., Jan 2022 - Present)",
-      "description": "Detailed job responsibilities and achievements as bullet points"
+      "duration": "Employment period",
+      "description": "Responsibilities and achievements as bullet points"
     }
   ],
   "projects": [
     {
       "name": "Project name",
       "description": "Project description and technologies used",
-      "technologies": ["Technology 1", "Technology 2"],
-      "githubRepo": "GitHub repository URL for this specific project or null",
-      "liveLink": "Live demo / deployed URL for this project or null"
+      "technologies": ["Tech1", "Tech2"],
+      "githubRepo": "Full GitHub repo URL (e.g. https://github.com/user/repo) found in the project description or next to the project name — look for github.com/... patterns; or null",
+      "liveLink": "Full live/demo URL found near the project (e.g. https://projectname.vercel.app) — look for https:// links that are not github.com; or null"
     }
   ],
-  "skills": ["Skill 1", "Skill 2", "Skill 3"],
+  "skills": ["Skill 1", "Skill 2"],
   "certifications": [
     {
-      "name": "Certification name",
-      "issuer": "Issuing organization",
-      "year": "Year obtained"
+      "name": "Certification name — REQUIRED field, never empty",
+      "issuer": "Issuing organization or null",
+      "year": "Year obtained or null"
     }
   ],
-  "languages": ["Language 1", "Language 2"]
+  "languages": ["Language 1"]
 }
 
 Resume Text:
@@ -456,18 +466,52 @@ ${resumeText}
 
       // Supplement: if AI missed LinkedIn/GitHub, try regex on the raw text
       if (!structuredData.linkedin) {
-        const liMatch = resumeText.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/([A-Za-z0-9_%-]+)/i);
-        if (liMatch) {
-          structuredData.linkedin = `https://linkedin.com/in/${liMatch[1]}`;
-          structuredData.linkedinText = structuredData.linkedinText || liMatch[1];
+        // Try full URL first
+        const liUrl = resumeText.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/([A-Za-z0-9_%-]+)/i);
+        if (liUrl) {
+          structuredData.linkedin = `https://linkedin.com/in/${liUrl[1]}`;
+          structuredData.linkedinText = structuredData.linkedinText || liUrl[1];
+        } else {
+          // Icon-font resumes: "ð username" or "in username" pattern near top of resume
+          const liIcon = resumeText.substring(0, 400).match(/(?:ð|LinkedIn|linked.?in)\s+([A-Za-z0-9_%-]{3,40})/i);
+          if (liIcon) {
+            structuredData.linkedin = `https://linkedin.com/in/${liIcon[1]}`;
+            structuredData.linkedinText = liIcon[1];
+          }
         }
       }
       if (!structuredData.github) {
-        const ghMatch = resumeText.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/([A-Za-z0-9_-]+)/i);
-        if (ghMatch) {
-          structuredData.github = `https://github.com/${ghMatch[1]}`;
-          structuredData.githubText = structuredData.githubText || ghMatch[1];
+        // Try full URL first
+        const ghUrl = resumeText.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/([A-Za-z0-9_-]+)/i);
+        if (ghUrl) {
+          structuredData.github = `https://github.com/${ghUrl[1]}`;
+          structuredData.githubText = structuredData.githubText || ghUrl[1];
+        } else {
+          // Icon-font resumes: "§ username" or "github username" pattern near top
+          const ghIcon = resumeText.substring(0, 400).match(/(?:§|GitHub|github)\s+([A-Za-z0-9_-]{3,40})/i);
+          if (ghIcon) {
+            structuredData.github = `https://github.com/${ghIcon[1]}`;
+            structuredData.githubText = ghIcon[1];
+          }
         }
+      }
+
+      // Supplement project-level GitHub repo and live links via regex scan
+      if (Array.isArray(structuredData.projects)) {
+        structuredData.projects = structuredData.projects.map(proj => {
+          const searchText = `${proj.name || ""} ${proj.description || ""}`;
+          // Fill missing githubRepo by scanning description for github.com/user/repo
+          if (!proj.githubRepo) {
+            const ghMatch = searchText.match(/https?:\/\/(?:www\.)?github\.com\/[A-Za-z0-9_-]+\/[A-Za-z0-9_.-]+/i);
+            if (ghMatch) proj = { ...proj, githubRepo: ghMatch[0] };
+          }
+          // Fill missing liveLink by scanning for any https link that's not github
+          if (!proj.liveLink) {
+            const liveMatch = searchText.match(/https?:\/\/(?!(?:www\.)?github\.com)[A-Za-z0-9._-]+\.[A-Za-z]{2,}[^\s]*/i);
+            if (liveMatch) proj = { ...proj, liveLink: liveMatch[0] };
+          }
+          return proj;
+        });
       }
 
     } catch (error) {
@@ -499,7 +543,11 @@ ${resumeText}
       experience: Array.isArray(structuredData.experience) ? structuredData.experience : [],
       projects: Array.isArray(structuredData.projects) ? structuredData.projects : [],
       skills: Array.isArray(structuredData.skills) ? structuredData.skills : [],
-      certifications: Array.isArray(structuredData.certifications) ? structuredData.certifications : [],
+      certifications: Array.isArray(structuredData.certifications)
+        ? structuredData.certifications.map(c =>
+            typeof c === "string" ? { name: c, issuer: null, year: null } : c
+          ).filter(c => c && c.name)
+        : [],
       languages: Array.isArray(structuredData.languages) ? structuredData.languages : []
     };
 
@@ -756,9 +804,11 @@ ${jobDescription.substring(0, 3000)}
           description: sanitizeForDatabase(e.description || ""),
         })),
         projects: (structuredData.projects || []).map(p => ({
-          ...p,
           name: sanitizeForDatabase(p.name || ""),
           description: sanitizeForDatabase(p.description || ""),
+          technologies: Array.isArray(p.technologies) ? p.technologies.map(t => sanitizeForDatabase(t)) : [],
+          githubRepo: sanitizeForDatabase(p.githubRepo || ""),
+          liveLink: sanitizeForDatabase(p.liveLink || ""),
         })),
         skills: (structuredData.skills || []).map(s => sanitizeForDatabase(s)),
         certifications: (structuredData.certifications || []).map(c => ({
