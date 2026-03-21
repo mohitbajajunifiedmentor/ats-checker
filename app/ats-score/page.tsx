@@ -293,6 +293,7 @@ export default function AtsScorePage() {
   /* Resume template collapsible */
   const [showResumeTemplate, setShowResumeTemplate] = useState(false);
   const [templateStyle, setTemplateStyle] = useState<"professional" | "classic">("professional");
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const showResults = useCallback((data: any) => {
     window.localStorage.setItem("atsAnalyzeResult", JSON.stringify(data));
@@ -464,11 +465,18 @@ export default function AtsScorePage() {
                     strokeDasharray={circ} strokeDashoffset={circ-(uploadProg/100)*circ} strokeLinecap="round"
                     style={{ filter:"drop-shadow(0 0 14px rgba(16,185,129,.7))", transition:"stroke-dashoffset .08s linear" }}/>
                 </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  {done
-                    ? <span className="text-6xl" style={{ animation:"checkPop .5s cubic-bezier(.34,1.56,.64,1) both" }}>✅</span>
-                    : <><span className="text-5xl font-black text-emerald-400 tabular-nums">{Math.round(uploadProg)}%</span><span className="text-sm text-slate-500 mt-1 font-medium">uploading</span></>
-                  }
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                  {done ? (
+                    <>
+                      <span className="text-5xl" style={{ animation:"checkPop .45s cubic-bezier(.34,1.56,.64,1) both" }}>✅</span>
+                      <span className="text-xs text-emerald-400 font-semibold mt-1" style={{ animation:"fadeUp .4s .3s both" }}>Uploaded!</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-5xl font-black text-emerald-400 tabular-nums">{Math.round(uploadProg)}%</span>
+                      <span className="text-sm text-slate-500 font-medium">uploading</span>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -484,39 +492,64 @@ export default function AtsScorePage() {
 
             {/* Right: status + bar */}
             <div className="space-y-8">
-              <div>
-                <h2 className="text-3xl font-extrabold text-white mb-3">Uploading Your Resume</h2>
+              <div style={{ transition:"all .4s ease" }}>
+                <h2 className="text-3xl font-extrabold text-white mb-3">
+                  {done ? "Starting AI Analysis…" : "Uploading Your Resume"}
+                </h2>
                 <p className="text-slate-400 leading-relaxed">
-                  Securely transmitting your resume to our servers. Your file is encrypted end-to-end — we never store raw PDFs beyond analysis.
+                  {done
+                    ? "Resume received. GPT-4o is warming up to scan your file for ATS signals, keyword gaps, and section scores."
+                    : "Securely transmitting your resume to our servers. Your file is encrypted end-to-end — we never store raw PDFs beyond analysis."}
                 </p>
               </div>
 
               {/* Progress bar */}
               <div>
                 <div className="flex justify-between text-sm mb-3">
-                  <span className={uploadProg>=100?"text-emerald-400 font-semibold":"text-slate-400"}>
-                    {uploadProg>=100 ? "✓ Upload complete — starting AI analysis…" : "Uploading resume…"}
+                  <span className={done ? "text-emerald-400 font-semibold flex items-center gap-2" : "text-slate-400"}>
+                    {done ? (
+                      <>
+                        <span className="inline-flex gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay:"0ms" }}/>
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay:"150ms" }}/>
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay:"300ms" }}/>
+                        </span>
+                        Preparing AI analysis…
+                      </>
+                    ) : "Uploading resume…"}
                   </span>
                   <span className="text-emerald-400 font-bold tabular-nums">{Math.round(uploadProg)}%</span>
                 </div>
                 <div className="w-full h-2.5 bg-slate-800/80 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full transition-all duration-75" style={{ width:`${uploadProg}%`, background:"linear-gradient(90deg,#10b981,#14b8a6,#34d399)", boxShadow:"0 0 12px rgba(16,185,129,.5)" }}/>
+                  <div className="h-full rounded-full" style={{
+                    width:`${uploadProg}%`,
+                    background: done
+                      ? "linear-gradient(90deg,#10b981,#14b8a6,#34d399,#10b981)"
+                      : "linear-gradient(90deg,#10b981,#14b8a6,#34d399)",
+                    boxShadow:"0 0 12px rgba(16,185,129,.5)",
+                    backgroundSize: done ? "200% 100%" : "100% 100%",
+                    animation: done ? "shimmer 1.5s linear infinite" : "none",
+                    transition:"width .08s linear",
+                  }}/>
                 </div>
               </div>
 
-              {/* Trust signals */}
+              {/* Steps — static while uploading, animated after done */}
               <div className="grid grid-cols-1 gap-3">
                 {[
-                  { icon:"🔒", title:"End-to-end encrypted", desc:"Your resume travels over TLS — never intercepted" },
-                  { icon:"🤖", title:"GPT-4o analysis ready", desc:"AI engine pre-loaded and waiting for your file" },
-                  { icon:"⚡", title:"Results in ~30 seconds", desc:"Score, keyword gaps, and section breakdown" },
-                ].map(({ icon, title, desc }) => (
-                  <div key={title} className="flex items-start gap-3 rounded-xl border border-slate-800/60 bg-slate-900/30 px-4 py-3">
+                  { icon:"🔒", title:"End-to-end encrypted",    desc:"Your resume travels over TLS — never intercepted",      doneDesc:"File secured ✓" },
+                  { icon:"🤖", title:"GPT-4o ready",            desc:"AI engine pre-loaded and waiting for your file",         doneDesc:"Parsing resume…" },
+                  { icon:"⚡", title:"Results in ~30 seconds",  desc:"Score, keyword gaps, and section breakdown",             doneDesc:"Analysis queued ✓" },
+                ].map(({ icon, title, desc, doneDesc }, idx) => (
+                  <div key={title} className={`flex items-start gap-3 rounded-xl border px-4 py-3 transition-all duration-500 ${
+                    done ? "border-emerald-500/30 bg-emerald-500/5" : "border-slate-800/60 bg-slate-900/30"
+                  }`} style={{ transitionDelay:`${idx*80}ms` }}>
                     <span className="text-lg shrink-0">{icon}</span>
-                    <div>
-                      <p className="text-sm font-semibold text-slate-200">{title}</p>
-                      <p className="text-xs text-slate-500 mt-0.5">{desc}</p>
+                    <div className="flex-1">
+                      <p className={`text-sm font-semibold transition-colors duration-300 ${done ? "text-emerald-300" : "text-slate-200"}`}>{title}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{done ? doneDesc : desc}</p>
                     </div>
+                    {done && idx === 1 && <div className="shrink-0 w-3.5 h-3.5 rounded-full border-2 border-emerald-400 border-t-transparent animate-spin mt-0.5"/>}
                   </div>
                 ))}
               </div>
@@ -524,7 +557,7 @@ export default function AtsScorePage() {
           </div>
         </div>
 
-        <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}} @keyframes checkPop{0%{transform:scale(0) rotate(-25deg);opacity:0}65%{transform:scale(1.2) rotate(6deg)}100%{transform:scale(1) rotate(0deg);opacity:1}}`}</style>
+        <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}} @keyframes checkPop{0%{transform:scale(0) rotate(-25deg);opacity:0}65%{transform:scale(1.2) rotate(6deg)}100%{transform:scale(1) rotate(0deg);opacity:1}} @keyframes fadeUp{0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}} @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}`}</style>
       </div>
     );
   }
@@ -658,8 +691,18 @@ export default function AtsScorePage() {
   /* ── LOADING ── */
   if (phase === "loading") {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="w-8 h-8 rounded-full border-4 border-emerald-500 border-t-transparent animate-spin" />
+      <div className="min-h-screen bg-[#030712] flex flex-col items-center justify-center gap-6" style={{ background:"radial-gradient(ellipse 60% 40% at 50% 0%,rgba(16,185,129,.06),transparent)" }}>
+        <div className="flex items-center gap-2.5 mb-2">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-base text-slate-900" style={{ background:"linear-gradient(135deg,#34d399,#0d9488)" }}>A</div>
+          <span className="font-bold text-white text-xl tracking-tight">ATS<span style={{ background:"linear-gradient(135deg,#10b981,#14b8a6)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>Checker</span></span>
+        </div>
+        <div className="relative w-16 h-16 flex items-center justify-center">
+          <div className="absolute inset-0 rounded-full border-4 border-slate-800"/>
+          <div className="absolute inset-0 rounded-full border-4 border-emerald-500 border-t-transparent" style={{ animation:"spin .9s linear infinite" }}/>
+          <span className="text-2xl">📄</span>
+        </div>
+        <p className="text-slate-400 text-sm">Loading your results…</p>
+        <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
       </div>
     );
   }
@@ -1505,10 +1548,16 @@ export default function AtsScorePage() {
         {/* ── VIEW HISTORY ── */}
         <div className="flex justify-center">
           <button
-            onClick={() => router.push(`/history?email=${encodeURIComponent(sd.email || "")}`)}
-            className="text-sm text-slate-500 hover:text-slate-300 transition-colors"
+            onClick={() => { setHistoryLoading(true); router.push(`/history?email=${encodeURIComponent(sd.email || "")}`); }}
+            disabled={historyLoading}
+            className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-300 transition-colors disabled:opacity-60"
           >
-            View Resume History →
+            {historyLoading ? (
+              <>
+                <span className="w-3.5 h-3.5 rounded-full border-2 border-slate-500 border-t-transparent" style={{ animation:"spin .8s linear infinite", display:"inline-block" }}/>
+                Loading…
+              </>
+            ) : "View Resume History →"}
           </button>
         </div>
       </div>
@@ -1587,7 +1636,8 @@ export default function AtsScorePage() {
             <div className="flex items-center gap-3 px-7 pb-7">
               <button
                 onClick={() => handleEnhance(jobDescInput)}
-                className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-[.98] transition-all text-white text-sm font-bold px-6 py-3.5 shadow-lg shadow-emerald-500/25"
+                disabled={!jobDescInput.trim()}
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-[.98] transition-all text-white text-sm font-bold px-6 py-3.5 shadow-lg shadow-emerald-500/25 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-emerald-500 disabled:active:scale-100"
               >
                 ✨ Enhance My Resume →
               </button>

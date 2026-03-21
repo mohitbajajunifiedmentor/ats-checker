@@ -1,6 +1,6 @@
 "use client";
 import { useState, useCallback, useRef, useEffect } from "react";
-import { FaGithub, FaExternalLinkAlt } from "react-icons/fa";
+import { FaGithub, FaExternalLinkAlt, FaEnvelope, FaPhone, FaMapMarkerAlt, FaLinkedin, FaGlobe } from "react-icons/fa";
 
 /* ══════════════════════════════════════════════════════════════
    A4 DIMENSIONS
@@ -432,28 +432,28 @@ export default function ProfessionalResumeEditor({
                   </div>
                 ):(
                   <div style={{ display:"flex",flexWrap:"wrap",gap:"4px 18px",marginTop:9,fontSize:FS.contactItem,opacity:0.9 }}>
-                    {data.email     &&<span>📧 {data.email}</span>}
-                    {data.phone     &&<span>📞 {data.phone}</span>}
-                    {data.address   &&<span>📍 {data.address}</span>}
-                    {data.linkedin  &&(
+                    {data.email    && <span style={{ display:"inline-flex",alignItems:"center",gap:4 }}><FaEnvelope size={10}/> {data.email}</span>}
+                    {data.phone    && <span style={{ display:"inline-flex",alignItems:"center",gap:4 }}><FaPhone size={10}/> {data.phone}</span>}
+                    {data.address  && <span style={{ display:"inline-flex",alignItems:"center",gap:4 }}><FaMapMarkerAlt size={10}/> {data.address}</span>}
+                    {data.linkedin && (
                       <a href={data.linkedin.startsWith("http")?data.linkedin:`https://${data.linkedin}`}
                         target="_blank" rel="noopener noreferrer"
-                        style={{ color:"inherit",textDecoration:"none" }}>
-                        🔗 {data.linkedinText || data.linkedin.replace(/https?:\/\/(www\.)?/i,"")}
+                        style={{ color:"inherit",textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4 }}>
+                        <FaLinkedin size={11} color="#61b0ff"/> {data.linkedinText || data.linkedin.replace(/https?:\/\/(www\.)?/i,"")}
                       </a>
                     )}
-                    {data.github    &&(
+                    {data.github   && (
                       <a href={data.github.startsWith("http")?data.github:`https://${data.github}`}
                         target="_blank" rel="noopener noreferrer"
-                        style={{ color:"inherit",textDecoration:"none" }}>
-                        💻 {data.githubText || data.github.replace(/https?:\/\/(www\.)?/i,"")}
+                        style={{ color:"inherit",textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4 }}>
+                        <FaGithub size={11}/> {data.githubText || data.github.replace(/https?:\/\/(www\.)?/i,"")}
                       </a>
                     )}
-                    {data.portfolio &&(
+                    {data.portfolio && (
                       <a href={data.portfolio.startsWith("http")?data.portfolio:`https://${data.portfolio}`}
                         target="_blank" rel="noopener noreferrer"
-                        style={{ color:"inherit",textDecoration:"none" }}>
-                        🌐 {data.portfolioText || data.portfolio.replace(/https?:\/\/(www\.)?/i,"")}
+                        style={{ color:"inherit",textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4 }}>
+                        <FaGlobe size={10}/> {data.portfolioText || data.portfolio.replace(/https?:\/\/(www\.)?/i,"")}
                       </a>
                     )}
                   </div>

@@ -178,6 +178,7 @@ export default function Home() {
   const [uploadProg, setUploadProg] = useState(0);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [exiting, setExiting] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
 
   const uploadCardRef = useRef<HTMLDivElement>(null);
 
@@ -207,11 +208,14 @@ export default function Home() {
       cur += Math.max(0.6, (100 - cur) * 0.034);
       if (cur >= 99.5) {
         cur = 100; setUploadProg(100); clearInterval(iv);
-        /* Slight pause to show checkmark, then exit animation */
+        /* Show checkmark briefly, then morph to analyzing state, then navigate */
         setTimeout(() => {
-          setExiting(true);
-          setTimeout(() => router.push("/ats-score"), 600);
-        }, 700);
+          setAnalyzing(true);
+          setTimeout(() => {
+            setExiting(true);
+            setTimeout(() => router.push("/ats-score"), 500);
+          }, 1800);
+        }, 600);
       } else {
         setUploadProg(cur);
       }
@@ -248,6 +252,8 @@ export default function Home() {
         @keyframes exitUp       { from{opacity:1;transform:translateY(0) scale(1)} to{opacity:0;transform:translateY(-40px) scale(0.96)} }
         @keyframes particleUp   { 0%{transform:translateY(0) scale(1);opacity:.9} 100%{transform:translateY(-48px) scale(0);opacity:0} }
         @keyframes rotateSlow   { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+        @keyframes spin         { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+        @keyframes pulse        { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.7;transform:scale(1.05)} }
         @keyframes ping         { 0%{transform:scale(1);opacity:.7} 100%{transform:scale(2.2);opacity:0} }
         @keyframes marquee      { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
         @keyframes gradientFlow { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
@@ -352,10 +358,6 @@ export default function Home() {
 
           {/* CTA */}
           <div className="flex items-center gap-3">
-            <Link href="/dashboard"
-              className="hidden sm:inline-flex text-sm text-slate-400 hover:text-white transition-colors font-medium">
-              Dashboard
-            </Link>
             <button
               onClick={() => uploadCardRef.current?.scrollIntoView({ behavior:"smooth", block:"center" })}
               className="inline-flex items-center gap-2 rounded-xl text-sm font-bold text-white px-4 py-2.5 transition-all duration-200 shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/35"
@@ -423,7 +425,7 @@ export default function Home() {
             }}>
 
             {/* ── UPLOADING STATE ── */}
-            {phase === "uploading" && uploadFile && (
+            {phase === "uploading" && uploadFile && !analyzing && (
               <div className="h-full glass-card rounded-3xl border border-slate-700/50 p-10 shadow-2xl shadow-black/60 scale-in flex flex-col items-center justify-center gap-7">
                 <div className="text-center">
                   <h2 className="text-2xl font-bold text-white">Uploading Resume</h2>
@@ -471,6 +473,67 @@ export default function Home() {
                     </>
                   );
                 })()}
+              </div>
+            )}
+
+            {/* ── ANALYZING STATE (bridge between upload and ats-score page) ── */}
+            {phase === "uploading" && uploadFile && analyzing && (
+              <div className="h-full glass-card rounded-3xl border border-emerald-500/25 p-10 shadow-2xl shadow-black/60 flex flex-col items-center justify-center gap-7"
+                style={{ animation:"fadeUp .4s ease both", background:"linear-gradient(160deg,rgba(16,185,129,.04),rgba(13,148,136,.02),transparent)" }}>
+                {/* Top badge */}
+                <div className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 rounded-full px-3 py-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" style={{ animation:"pulse 1s ease-in-out infinite" }}/>
+                  GPT-4o · AI Analysis
+                </div>
+
+                {/* Animated icon ring */}
+                <div className="relative w-32 h-32 flex items-center justify-center">
+                  <div className="absolute inset-0 rounded-full opacity-25" style={{ border:"2px dashed rgba(16,185,129,.5)", animation:"rotateSlow 6s linear infinite" }}/>
+                  <div className="absolute inset-3 rounded-full opacity-15" style={{ border:"2px dashed rgba(16,185,129,.4)", animation:"rotateSlow 10s linear infinite reverse" }}/>
+                  <div className="w-20 h-20 rounded-full bg-emerald-500/10 border-2 border-emerald-500/30 flex items-center justify-center" style={{ animation:"pulse 2s ease-in-out infinite" }}>
+                    <span className="text-4xl">🤖</span>
+                  </div>
+                </div>
+
+                {/* Heading */}
+                <div className="text-center">
+                  <h2 className="text-2xl font-bold text-white mb-2">Analyzing Your Resume</h2>
+                  <p className="text-sm text-slate-400">GPT-4o is scanning every section for ATS signals…</p>
+                </div>
+
+                {/* Animated step list */}
+                <div className="w-full max-w-xs space-y-2.5">
+                  {[
+                    { label:"Parsing resume structure", done:true },
+                    { label:"Extracting contact & skills", done:true },
+                    { label:"Running ATS scoring rubrics", active:true },
+                    { label:"Generating improvement tips", pending:true },
+                  ].map(({ label, done, active }, i) => (
+                    <div key={label} className={`flex items-center gap-3 rounded-xl border px-4 py-2.5 transition-all duration-500 ${
+                      done    ? "border-emerald-500/20 bg-emerald-500/5"
+                      : active ? "border-emerald-500/35 bg-emerald-500/8"
+                               : "border-slate-800/50 opacity-40"
+                    }`} style={{ animation:`fadeUp .4s ease ${i * 80}ms both` }}>
+                      <div className={`shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                        done    ? "bg-emerald-500/20 text-emerald-400"
+                        : active ? "bg-emerald-500/10 text-emerald-400"
+                                 : "bg-slate-800 text-slate-600"
+                      }`}>
+                        {done ? "✓" : active
+                          ? <span className="w-3 h-3 rounded-full border-2 border-emerald-400 border-t-transparent" style={{ animation:"spin .8s linear infinite", display:"inline-block" }}/>
+                          : "·"}
+                      </div>
+                      <span className={`text-xs font-medium ${done?"text-emerald-400":active?"text-slate-200":"text-slate-600"}`}>{label}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* File name */}
+                <div className="flex items-center gap-2 text-xs text-slate-600">
+                  <span>📄</span>
+                  <span className="max-w-[200px] truncate">{uploadFile.name}</span>
+                  <span>· {(uploadFile.size/1024/1024).toFixed(2)} MB</span>
+                </div>
               </div>
             )}
 
@@ -931,7 +994,6 @@ export default function Home() {
             <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-slate-500">
               <button onClick={() => uploadCardRef.current?.scrollIntoView({ behavior:"smooth", block:"center" })}
                 className="hover:text-slate-300 transition-colors">Check Resume</button>
-              <Link href="/dashboard" className="hover:text-slate-300 transition-colors">Dashboard</Link>
               <Link href="/history"   className="hover:text-slate-300 transition-colors">History</Link>
               <Link href="/upload"    className="hover:text-slate-300 transition-colors">Upload Page</Link>
             </div>

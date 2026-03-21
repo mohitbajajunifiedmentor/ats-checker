@@ -1,6 +1,6 @@
 "use client";
 import { useState, useCallback, useRef, useEffect } from "react";
-import { FaGithub, FaLinkedin, FaExternalLinkAlt } from "react-icons/fa";
+import { FaGithub, FaLinkedin, FaExternalLinkAlt, FaEnvelope, FaPhone, FaGlobe } from "react-icons/fa";
 
 /* ══════════════════════════════════════════════════════════════
    CLASSIC / ACADEMIC RESUME TEMPLATE
@@ -250,8 +250,16 @@ export default function ClassicResumeEditor({
               </div>
             ) : (
               <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "4px 14px", marginTop: 5, fontSize: 10 }}>
-                {data.email && <span>✉ {data.email}</span>}
-                {data.phone && <span>📞 {data.phone}</span>}
+                {data.email && (
+                  <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <FaEnvelope size={11} color="#555" /> {data.email}
+                  </span>
+                )}
+                {data.phone && (
+                  <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <FaPhone size={11} color="#555" /> {data.phone}
+                  </span>
+                )}
                 {data.linkedin && (
                   <a href={data.linkedin.startsWith("http") ? data.linkedin : `https://${data.linkedin}`}
                     target="_blank" rel="noopener noreferrer"
@@ -279,8 +287,8 @@ export default function ClassicResumeEditor({
                 )}
                 {data.portfolio && (
                   <a href={data.portfolio.startsWith("http") ? data.portfolio : `https://${data.portfolio}`}
-                    target="_blank" rel="noopener noreferrer" style={{ color: "#000", textDecoration: "none" }}>
-                    🌐 {data.portfolioText || data.portfolio.replace(/https?:\/\/(www\.)?/i, "")}
+                    target="_blank" rel="noopener noreferrer" style={{ color: "#000", textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
+                    <FaGlobe size={12} color="#555" /> {data.portfolioText || data.portfolio.replace(/https?:\/\/(www\.)?/i, "")}
                   </a>
                 )}
               </div>
