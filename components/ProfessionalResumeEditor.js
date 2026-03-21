@@ -1,6 +1,9 @@
 "use client";
 import { useState, useCallback, useRef, useEffect } from "react";
 import { FaGithub, FaExternalLinkAlt, FaEnvelope, FaPhone, FaMapMarkerAlt, FaLinkedin, FaGlobe } from "react-icons/fa";
+import AISuggestPanel from "./AISuggestPanel";
+import HighlightedText from "./HighlightedText";
+import GrammarSidebarPanel from "./GrammarSidebarPanel";
 
 /* ══════════════════════════════════════════════════════════════
    A4 DIMENSIONS
@@ -187,6 +190,10 @@ export default function ProfessionalResumeEditor({
   const [saving,    setSaving]   = useState(false);
   const [saved,     setSaved]    = useState(false);
   const [printing,  setPrinting] = useState(false);
+  const [aiAssist,  setAiAssist] = useState(false);
+  const [grammarResult,  setGrammarResult]  = useState(null);
+  const [grammarLoading, setGrammarLoading] = useState(false);
+  const [grammarError,   setGrammarError]   = useState(null);
   const [pageBreaks, setPageBreaks] = useState([]);
   const sheetRef = useRef(null);
   const sheetId  = "resume-a4-sheet";
@@ -217,6 +224,75 @@ export default function ProfessionalResumeEditor({
     finally { setSaving(false); }
   };
   const handleDiscard = ()=>{ setEditing(false); setData(initialData||{}); };
+
+  const handleAnalyze = async () => {
+    setGrammarLoading(true);
+    setGrammarError(null);
+    try {
+      const res = await fetch("/api/grammar-check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sections: {
+            summary: data.summary || "",
+            experience: (data.experience || []).map((e, i) => ({ ...e, _index: i })),
+            projects:   (data.projects   || []).map((p, i) => ({ ...p, _index: i })),
+            education:  (data.education  || []).map((e, i) => ({ ...e, _index: i })),
+            skills:     data.skills || [],
+            certifications: (data.certifications || []).map((c, i) => ({
+              ...(typeof c === "string" ? { name: c } : c), _index: i,
+            })),
+          },
+        }),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+      setGrammarResult(json);
+    } catch (e) {
+      setGrammarError(e.message);
+    } finally {
+      setGrammarLoading(false);
+    }
+  };
+
+  const handleGrammarCorrect = useCallback((issue) => {
+    const { section, entryIndex, field, original, correction } = issue;
+    setData(d => {
+      if (entryIndex === null || entryIndex === undefined) {
+        const cur = d[section] || "";
+        return { ...d, [section]: cur.replace(original, correction) };
+      }
+      const arr = d[section] || [];
+      return {
+        ...d,
+        [section]: arr.map((item, idx) => {
+          if (idx !== entryIndex) return item;
+          if (typeof item === "string") return item.replace(original, correction);
+          const val = item[field] || "";
+          return { ...item, [field]: val.replace(original, correction) };
+        }),
+      };
+    });
+    setGrammarResult(prev => ({
+      ...prev,
+      sections: {
+        ...prev.sections,
+        [section]: {
+          ...prev.sections[section],
+          issues: prev.sections[section].issues.filter(
+            iss => !(iss.original === original && iss.entryIndex === entryIndex && iss.field === field)
+          ),
+        },
+      },
+    }));
+  }, []);
+
+  const issuesFor = useCallback((section, field, entryIndex = null) =>
+    grammarResult?.sections?.[section]?.issues?.filter(
+      iss => iss.field === field && iss.entryIndex === entryIndex
+    ) ?? []
+  , [grammarResult]);
+
   const handlePrint   = ()=>{
     setPrinting(true);
     try { downloadAsPrint(sheetId,`${data.name||"Resume"}_${isEnhanced?"Enhanced_":""}ATS.pdf`); }
@@ -232,7 +308,8 @@ export default function ProfessionalResumeEditor({
      RENDER
   ────────────────────────────────────────────────────────────── */
   return (
-    <div>
+    <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+    <div style={{ flex: 1, minWidth: 0 }}>
       {/* ════ TOOLBAR ════ */}
       <div style={{
         display:"flex", flexWrap:"wrap", alignItems:"center",
@@ -272,6 +349,20 @@ export default function ProfessionalResumeEditor({
         <div style={{ display:"flex",flexWrap:"wrap",gap:8 }}>
           {editing?(
             <>
+              <button
+                onClick={() => setAiAssist(v => !v)}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  padding: "7px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+                  cursor: "pointer", border: "none", transition: "all 0.15s",
+                  background: aiAssist ? "#6d28d9" : "#1e293b",
+                  color: aiAssist ? "#fff" : "#a78bfa",
+                  boxShadow: aiAssist ? "0 4px 14px #6d28d940" : "none",
+                  outline: aiAssist ? "1px solid #7c3aed" : "1px solid #334155",
+                }}
+              >
+                ✨ AI Assist {aiAssist ? "On" : "Off"}
+              </button>
               <Btn onClick={handleDiscard} variant="danger">✕ Discard</Btn>
               <Btn onClick={handleSave} disabled={saving} variant="primary">
                 {saving?"⏳ Saving…":"✓ Save Changes"}
@@ -280,6 +371,27 @@ export default function ProfessionalResumeEditor({
           ):(
             <>
               {saved&&<span style={{ fontSize:12,color:"#34d399",alignSelf:"center" }}>✓ Saved</span>}
+              <button
+                onClick={handleAnalyze}
+                disabled={grammarLoading}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  padding: "7px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+                  cursor: grammarLoading ? "not-allowed" : "pointer",
+                  border: "none", transition: "all 0.15s", opacity: grammarLoading ? 0.7 : 1,
+                  background: grammarResult ? "#1e1b4b" : "#1e293b",
+                  color: grammarResult ? "#a5b4fc" : "#94a3b8",
+                  outline: grammarResult ? "1px solid #4338ca" : "1px solid #334155",
+                }}
+              >
+                {grammarLoading ? (
+                  <>
+                    <span style={{ width:12,height:12,borderRadius:"50%",border:"2px solid #a5b4fc",borderTopColor:"transparent",animation:"spin .7s linear infinite",display:"inline-block" }}/>
+                    Analyzing…
+                  </>
+                ) : grammarResult ? "🔍 Re-Analyze" : "🔍 Analyze Resume"}
+              </button>
+              {grammarError && <span style={{ fontSize:10,color:"#ef4444" }}>⚠ {grammarError}</span>}
               <Btn onClick={handlePrint} disabled={printing} variant="default">
                 {printing?"⏳ Opening…":"⬇ Download PDF"}
               </Btn>
@@ -486,6 +598,14 @@ export default function ProfessionalResumeEditor({
                       </div>
                     ))}
                     {!(data.skills||[]).length&&<span style={{ fontSize:10,color:"#aaa" }}>No skills yet</span>}
+                    {aiAssist && (
+                      <AISuggestPanel
+                        section="skills"
+                        context={{ role: (data.experience||[])[0]?.title, currentSkills: (data.skills||[]).join(", ") }}
+                        onApply={s => addArr("skills", s)}
+                        label="Suggest Skills"
+                      />
+                    )}
                   </div>
                 ):(
                   <div style={{ display:"flex",flexWrap:"wrap",gap:3 }}>
@@ -583,10 +703,22 @@ export default function ProfessionalResumeEditor({
                 <section>
                   <SecHead>Professional Summary</SecHead>
                   {editing?(
-                    <EditArea value={data.summary} onChange={v=>set("summary",v)} rows={4}
-                      placeholder="Write a compelling 40–80 word summary. Include your title, years of experience, key skills, and what makes you ideal for this role…"/>
+                    <>
+                      {aiAssist && (
+                        <AISuggestPanel
+                          section="summary"
+                          context={{ name: data.name, role: (data.experience||[])[0]?.title, skills: (data.skills||[]).join(", ") }}
+                          onApply={s => set("summary", s)}
+                          label="Suggest Summary"
+                        />
+                      )}
+                      <EditArea value={data.summary} onChange={v=>set("summary",v)} rows={4}
+                        placeholder="Write a compelling 40–80 word summary. Include your title, years of experience, key skills, and what makes you ideal for this role…"/>
+                    </>
                   ):(
-                    <p style={{ fontSize:FS.body,color:C.textSub,lineHeight:1.7,margin:0 }}>{data.summary}</p>
+                    <p style={{ fontSize:FS.body,color:C.textSub,lineHeight:1.7,margin:0 }}>
+                      <HighlightedText text={data.summary} issues={issuesFor("summary","summary")} onCorrect={handleGrammarCorrect}/>
+                    </p>
                   )}
                 </section>
               )}
@@ -611,6 +743,14 @@ export default function ProfessionalResumeEditor({
                             <EditText value={exp.duration} onChange={v=>setArr("experience",i,"duration",v)} placeholder="Jan 2022–Present" fontSize={9.5}/>
                           </div>
                           <EditText value={exp.company} onChange={v=>setArr("experience",i,"company",v)} placeholder="Company Name" fontSize={10}/>
+                          {aiAssist && (
+                            <AISuggestPanel
+                              section="experience_bullets"
+                              context={{ role: exp.title, company: exp.company, skills: (data.skills||[]).join(", ") }}
+                              onApply={s => setArr("experience", i, "description", (exp.description ? exp.description + "\n" : "") + "• " + s)}
+                              label="Suggest Bullets"
+                            />
+                          )}
                           <EditArea value={exp.description} onChange={v=>setArr("experience",i,"description",v)} rows={4}
                             placeholder={"• Led team of 8 engineers…\n• Built REST APIs serving 100k+ DAU\n• Reduced deployment time by 60%"}
                             fontSize={FS.body}/>
@@ -623,7 +763,18 @@ export default function ProfessionalResumeEditor({
                             <div style={{ fontSize:FS.bodySmall,color:C.textMuted,whiteSpace:"nowrap",flexShrink:0 }}>{exp.duration}</div>
                           </div>
                           <div style={{ fontSize:FS.bodySmall,fontWeight:600,color:C.accent,marginTop:1 }}>{exp.company}</div>
-                          <Bullets text={exp.description}/>
+                          <div style={{ marginTop:4 }}>
+                            {(exp.description||"").split("\n").filter(l=>l.trim()).map((line,li)=>{
+                              const clean=line.replace(/^[•◦\-*▸]\s*/,"");
+                              const lineIssues=issuesFor("experience","description",i).filter(iss=>iss.original&&clean.includes(iss.original));
+                              return (
+                                <div key={li} style={{ display:"flex",gap:6,marginBottom:3 }}>
+                                  <span style={{ flexShrink:0,color:C.accent,marginTop:2 }}>▸</span>
+                                  <HighlightedText text={clean} issues={lineIssues} onCorrect={handleGrammarCorrect} style={{ fontSize:FS.body,lineHeight:1.6,color:C.textSub }}/>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </>
                       )}
                     </div>
@@ -650,6 +801,14 @@ export default function ProfessionalResumeEditor({
                       {editing?(
                         <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
                           <EditText value={proj.name} onChange={v=>setArr("projects",i,"name",v)} placeholder="Project Name" fontSize={11}/>
+                          {aiAssist && (
+                            <AISuggestPanel
+                              section="project_description"
+                              context={{ projectName: proj.name, technologies: (proj.technologies||[]).join(", ") }}
+                              onApply={s => setArr("projects", i, "description", (proj.description ? proj.description + "\n" : "") + "• " + s)}
+                              label="Suggest Bullets"
+                            />
+                          )}
                           <EditArea value={proj.description} onChange={v=>setArr("projects",i,"description",v)} rows={3}
                             placeholder="Describe the project, your role, outcomes and technologies used…"
                             fontSize={FS.body}/>
@@ -719,9 +878,18 @@ export default function ProfessionalResumeEditor({
         <div style={{ textAlign:"center",marginTop:16,fontSize:11,color:"#64748b",letterSpacing:"0.03em" }}>
           A4 · 210 × 297 mm
         </div>
-      </div>{/* /paper tray */}
+      </div>
 
-      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}`}</style>
+      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}} @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
+    </div>
+
+    {grammarResult && !editing && (
+      <GrammarSidebarPanel
+        result={grammarResult}
+        onCorrect={handleGrammarCorrect}
+        onDismiss={() => setGrammarResult(null)}
+      />
+    )}
     </div>
   );
 }
