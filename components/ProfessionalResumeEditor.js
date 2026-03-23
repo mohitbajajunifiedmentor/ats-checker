@@ -45,20 +45,30 @@ function downloadAsPrint(sheetId, fileName) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   DESIGN TOKENS  (professional dark teal palette)
+   COLOR THEMES
 ══════════════════════════════════════════════════════════════ */
-const C = {
-  accent:      "#0f766e",  /* teal-700 */
-  accentDark:  "#134e4a",  /* teal-900 */
-  accentLight: "#f0fdfa",  /* teal-50  */
-  accentMid:   "#99f6e4",  /* teal-200 */
-  headerBg:    "#0f172a",  /* slate-900 – header strip */
-  sidebar:     "#f8fafc",  /* slate-50  */
-  border:      "#e2e8f0",  /* slate-200 */
-  text:        "#0f172a",  /* slate-900 */
-  textSub:     "#334155",  /* slate-700 */
-  textMuted:   "#64748b",  /* slate-500 */
+const THEMES = {
+  teal:   { label:"Teal",    accent:"#0f766e", accentDark:"#134e4a", accentLight:"#f0fdfa", accentMid:"#99f6e4", headerBg:"#0f172a" },
+  blue:   { label:"Blue",    accent:"#1d4ed8", accentDark:"#1e3a8a", accentLight:"#eff6ff", accentMid:"#bfdbfe", headerBg:"#0f172a" },
+  indigo: { label:"Indigo",  accent:"#4f46e5", accentDark:"#312e81", accentLight:"#eef2ff", accentMid:"#c7d2fe", headerBg:"#0f172a" },
+  purple: { label:"Purple",  accent:"#7c3aed", accentDark:"#4c1d95", accentLight:"#faf5ff", accentMid:"#ddd6fe", headerBg:"#0f172a" },
+  rose:   { label:"Rose",    accent:"#be123c", accentDark:"#881337", accentLight:"#fff1f2", accentMid:"#fecdd3", headerBg:"#0f172a" },
+  emerald:{ label:"Emerald", accent:"#059669", accentDark:"#064e3b", accentLight:"#ecfdf5", accentMid:"#a7f3d0", headerBg:"#0f172a" },
+  slate:  { label:"Slate",   accent:"#475569", accentDark:"#1e293b", accentLight:"#f8fafc", accentMid:"#cbd5e1", headerBg:"#0f172a" },
+  orange: { label:"Orange",  accent:"#c2410c", accentDark:"#7c2d12", accentLight:"#fff7ed", accentMid:"#fed7aa", headerBg:"#0f172a" },
 };
+
+function getTheme(key) {
+  const t = THEMES[key] || THEMES.teal;
+  return {
+    ...t,
+    sidebar:   "#f8fafc",
+    border:    "#e2e8f0",
+    text:      "#0f172a",
+    textSub:   "#334155",
+    textMuted: "#64748b",
+  };
+}
 
 /* font scale tuned for A4 print */
 const FS = {
@@ -74,7 +84,7 @@ const FS = {
 /* ══════════════════════════════════════════════════════════════
    SECTION HEADING — uppercase coloured divider
 ══════════════════════════════════════════════════════════════ */
-function SecHead({ children, onAdd, addLabel }) {
+function SecHead({ children, onAdd, addLabel, C }) {
   return (
     <div style={{
       display:"flex", alignItems:"center", justifyContent:"space-between",
@@ -98,11 +108,14 @@ function SecHead({ children, onAdd, addLabel }) {
 /* ══════════════════════════════════════════════════════════════
    SKILL / LANGUAGE TAG
 ══════════════════════════════════════════════════════════════ */
-function Tag({ label, color = C.accent, bg = C.accentLight, border = C.accentMid }) {
+function Tag({ label, color, bg, border, C }) {
+  const _color  = color  ?? C.accent;
+  const _bg     = bg     ?? C.accentLight;
+  const _border = border ?? C.accentMid;
   return (
     <span style={{
       display:"inline-block", fontSize:FS.tag, fontWeight:500,
-      color, background:bg, border:`1px solid ${border}`,
+      color:_color, background:_bg, border:`1px solid ${_border}`,
       borderRadius:3, padding:"2px 7px", margin:"1.5px 2px 1.5px 0",
     }}>{label}</span>
   );
@@ -134,7 +147,7 @@ function EditArea({ value, onChange, placeholder, rows = 4, fontSize = FS.body }
 /* ══════════════════════════════════════════════════════════════
    TOOLBAR BUTTON
 ══════════════════════════════════════════════════════════════ */
-function Btn({ onClick, disabled, variant="default", children }) {
+function Btn({ onClick, disabled, variant="default", children, C }) {
   const base = {
     display:"inline-flex", alignItems:"center", gap:6,
     padding:"7px 14px", borderRadius:8, fontSize:12, fontWeight:600,
@@ -152,7 +165,7 @@ function Btn({ onClick, disabled, variant="default", children }) {
 /* ══════════════════════════════════════════════════════════════
    BULLET RENDERER — "• text" or "- text" → ▸ text
 ══════════════════════════════════════════════════════════════ */
-function Bullets({ text }) {
+function Bullets({ text, C }) {
   if (!text) return null;
   const lines = text.split("\n").filter(l => l.trim());
   return (
@@ -191,10 +204,12 @@ export default function ProfessionalResumeEditor({
   const [saved,     setSaved]    = useState(false);
   const [printing,  setPrinting] = useState(false);
   const [aiAssist,  setAiAssist] = useState(false);
+  const [themeKey,  setThemeKey] = useState("teal");
   const [grammarResult,  setGrammarResult]  = useState(null);
   const [grammarLoading, setGrammarLoading] = useState(false);
   const [grammarError,   setGrammarError]   = useState(null);
   const [pageBreaks, setPageBreaks] = useState([]);
+  const C = getTheme(themeKey);
   const sheetRef = useRef(null);
   const sheetId  = "resume-a4-sheet";
 
@@ -346,6 +361,28 @@ export default function ProfessionalResumeEditor({
           )}
         </div>
 
+        <div style={{ display:"flex",flexWrap:"wrap",alignItems:"center",gap:12 }}>
+          {/* Theme swatches — always visible */}
+          <div style={{ display:"flex",alignItems:"center",gap:5 }}>
+            <span style={{ fontSize:10,color:"#64748b",marginRight:2 }}>Theme:</span>
+            {Object.entries(THEMES).map(([key,theme])=>(
+              <button
+                key={key}
+                onClick={()=>setThemeKey(key)}
+                title={theme.label}
+                style={{
+                  width:18, height:18, borderRadius:"50%",
+                  background:theme.accent,
+                  border: themeKey===key ? "2.5px solid #fff" : "2px solid transparent",
+                  outline: themeKey===key ? `2px solid ${theme.accent}` : "none",
+                  cursor:"pointer", padding:0, flexShrink:0,
+                  boxShadow: themeKey===key ? `0 0 0 3px ${theme.accent}40` : "none",
+                  transition:"all 0.15s",
+                }}
+              />
+            ))}
+          </div>
+
         <div style={{ display:"flex",flexWrap:"wrap",gap:8 }}>
           {editing?(
             <>
@@ -363,8 +400,8 @@ export default function ProfessionalResumeEditor({
               >
                 ✨ AI Assist {aiAssist ? "On" : "Off"}
               </button>
-              <Btn onClick={handleDiscard} variant="danger">✕ Discard</Btn>
-              <Btn onClick={handleSave} disabled={saving} variant="primary">
+              <Btn C={C} onClick={handleDiscard} variant="danger">✕ Discard</Btn>
+              <Btn C={C} onClick={handleSave} disabled={saving} variant="primary">
                 {saving?"⏳ Saving…":"✓ Save Changes"}
               </Btn>
             </>
@@ -392,12 +429,13 @@ export default function ProfessionalResumeEditor({
                 ) : grammarResult ? "🔍 Re-Analyze" : "🔍 Analyze Resume"}
               </button>
               {grammarError && <span style={{ fontSize:10,color:"#ef4444" }}>⚠ {grammarError}</span>}
-              <Btn onClick={handlePrint} disabled={printing} variant="default">
+              <Btn C={C} onClick={handlePrint} disabled={printing} variant="default">
                 {printing?"⏳ Opening…":"⬇ Download PDF"}
               </Btn>
-              <Btn onClick={()=>setEditing(true)} variant="primary">✏ Edit Resume</Btn>
+              <Btn C={C} onClick={()=>setEditing(true)} variant="primary">✏ Edit Resume</Btn>
             </>
           )}
+        </div>
         </div>
       </div>
 
@@ -587,7 +625,7 @@ export default function ProfessionalResumeEditor({
 
               {/* SKILLS */}
               <section>
-                <SecHead onAdd={editing?()=>addArr("skills",""):null} addLabel="Skill">Skills</SecHead>
+                <SecHead C={C} onAdd={editing?()=>addArr("skills",""):null} addLabel="Skill">Skills</SecHead>
                 {editing?(
                   <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
                     {(data.skills||[]).map((sk,i)=>(
@@ -609,7 +647,7 @@ export default function ProfessionalResumeEditor({
                   </div>
                 ):(
                   <div style={{ display:"flex",flexWrap:"wrap",gap:3 }}>
-                    {(data.skills||[]).map((sk,i)=><Tag key={i} label={sk}/>)}
+                    {(data.skills||[]).map((sk,i)=><Tag C={C} key={i} label={sk}/>)}
                     {!(data.skills||[]).length&&<p style={{ fontSize:10,color:C.textMuted }}>No skills added</p>}
                   </div>
                 )}
@@ -617,7 +655,7 @@ export default function ProfessionalResumeEditor({
 
               {/* EDUCATION */}
               <section>
-                <SecHead onAdd={editing?()=>addArr("education",{degree:"",institution:"",year:""}):null} addLabel="Edu">
+                <SecHead C={C} onAdd={editing?()=>addArr("education",{degree:"",institution:"",year:""}):null} addLabel="Edu">
                   Education
                 </SecHead>
                 {(data.education||[]).map((edu,i)=>(
@@ -644,7 +682,7 @@ export default function ProfessionalResumeEditor({
               {/* CERTIFICATIONS */}
               {(editing||(data.certifications||[]).length>0)&&(
                 <section>
-                  <SecHead onAdd={editing?()=>addArr("certifications",{name:"",issuer:"",year:""}):null} addLabel="Cert">
+                  <SecHead C={C} onAdd={editing?()=>addArr("certifications",{name:"",issuer:"",year:""}):null} addLabel="Cert">
                     Certifications
                   </SecHead>
                   {(data.certifications||[]).map((cert,i)=>{
@@ -673,7 +711,7 @@ export default function ProfessionalResumeEditor({
               {/* LANGUAGES */}
               {(editing||(data.languages||[]).length>0)&&(
                 <section>
-                  <SecHead onAdd={editing?()=>addArr("languages",""):null} addLabel="Lang">Languages</SecHead>
+                  <SecHead C={C} onAdd={editing?()=>addArr("languages",""):null} addLabel="Lang">Languages</SecHead>
                   {editing?(
                     <div style={{ display:"flex",flexDirection:"column",gap:3 }}>
                       {(data.languages||[]).map((l,i)=>(
@@ -687,7 +725,7 @@ export default function ProfessionalResumeEditor({
                   ):(
                     <div style={{ display:"flex",flexWrap:"wrap",gap:3 }}>
                       {(data.languages||[]).map((l,i)=>(
-                        <Tag key={i} label={l} color="#166534" bg="#f0fdf4" border="#bbf7d0"/>
+                        <Tag C={C} key={i} label={l} color="#166534" bg="#f0fdf4" border="#bbf7d0"/>
                       ))}
                     </div>
                   )}
@@ -701,7 +739,7 @@ export default function ProfessionalResumeEditor({
               {/* PROFESSIONAL SUMMARY */}
               {(editing||data.summary)&&(
                 <section>
-                  <SecHead>Professional Summary</SecHead>
+                  <SecHead C={C}>Professional Summary</SecHead>
                   {editing?(
                     <>
                       {aiAssist && (
@@ -726,7 +764,7 @@ export default function ProfessionalResumeEditor({
               {/* WORK EXPERIENCE */}
               {(editing||(data.experience||[]).length>0)&&(
                 <section>
-                  <SecHead
+                  <SecHead C={C}
                     onAdd={editing?()=>addArr("experience",{title:"",company:"",duration:"",description:""}):null}
                     addLabel="Role">
                     Work Experience
@@ -788,7 +826,7 @@ export default function ProfessionalResumeEditor({
               {/* PROJECTS */}
               {(editing||(data.projects||[]).length>0)&&(
                 <section>
-                  <SecHead
+                  <SecHead C={C}
                     onAdd={editing?()=>addArr("projects",{name:"",description:"",technologies:[],githubRepo:"",liveLink:""}):null}
                     addLabel="Project">
                     Projects
